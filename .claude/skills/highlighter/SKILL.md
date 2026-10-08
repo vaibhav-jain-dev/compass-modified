@@ -59,7 +59,9 @@ Compass watches the file and reloads it within about a second. Rules:
 - **Queries** (`queries:` with `title`, `namespace`, `filter`, optional `project`/`sort`,
   `expect`, `notes`) become "Open with filter" buttons in the tab; use `shell:` for anything
   that is not a plain find. Prefer concrete ids over placeholders: look them up in the database
-  first when you can.
+  first when you can. Queries can also sit on a collection entry (feature or model file) without
+  a `namespace`; those, plus feature queries targeting the collection, fill the Documents tab
+  **Queries** menu and serve as worked examples for the local AI (`local-ai` skill).
 - **Code references** (`code:` with `path`, `line`, `notes`) become links when `codeBaseUrl` is
   set at the top of the file. **Checks** (`checks:` with `text`, `done`) are a checklist the
   user ticks in the tab; the tab writes `done` back.

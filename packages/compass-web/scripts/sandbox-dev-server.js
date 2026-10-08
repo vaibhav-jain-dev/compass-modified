@@ -1,4 +1,5 @@
 'use strict';
+/* eslint-disable no-console */
 // Fork-specific helpers for the compass-web sandbox dev server.
 const fs = require('fs');
 const net = require('net');
@@ -120,6 +121,8 @@ function readBody(req) {
  * text), PUT replaces the file.
  */
 function createHighlighterConfigMiddleware(middlewares, devServer) {
+  // Fork extra feature: local AI query generation, see extra-features/local-ai.md
+  require('./local-ai').registerLocalAiRoutes(devServer.app);
   devServer.app.get('/sandbox/local-mongo', async (req, res) => {
     res.json(await probeLocalMongo());
   });

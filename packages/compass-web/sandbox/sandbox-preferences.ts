@@ -40,7 +40,9 @@ if (Object.hasOwn(globalThis, '__compassWebEnableSandboxPreferencesOverride')) {
       enableGenAIToolCallingAtlasProject: true,
       enableAtlasConnectionErrorDebuggerTool: false,
       enableAtlasSignIn: false,
-      optInGenAIFeatures: false,
+      // Fork-specific: "Generate query" uses the local model (see
+      // extra-features/local-ai.md); there is nothing to opt into.
+      optInGenAIFeatures: true,
       enableMyQueries: false,
       // Fork-specific: the "Introducing MongoDB Assistant" guide cue races its
       // focus trap on slower machines and throws "Your focus-trap must have at

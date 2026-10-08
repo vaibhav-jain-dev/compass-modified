@@ -2,7 +2,10 @@ import React, { useCallback, useContext, useMemo } from 'react';
 import type QueryBar from './query-bar';
 import { useSelector, useStore } from '../stores/context';
 import type { ChangeFilterEvent } from '../modules/change-filter';
-import { applyFilterChange } from '../stores/query-bar-reducer';
+import {
+  applyFilterChange,
+  applyFromHistory,
+} from '../stores/query-bar-reducer';
 import { mapFormFieldsToQuery } from '../utils/query';
 import { createServiceLocator } from '@mongodb-js/compass-app-registry';
 import type { RootState } from '../stores/query-bar-store';
@@ -83,6 +86,21 @@ export function useChangeQueryBarQuery() {
       payload: Extract<ChangeFilterEvent, { type: T }>['payload']
     ) => {
       store.dispatch(applyFilterChange({ type, payload } as ChangeFilterEvent));
+    },
+    [store]
+  );
+}
+
+/**
+ * Fork extra feature: apply a complete query (filter, project, sort, skip,
+ * limit) to the query bar and run it, the way "apply from history" does.
+ * Used by the highlighter's predefined queries menu.
+ */
+export function useApplyQueryBarQuery() {
+  const store = useStore();
+  return useCallback(
+    (query: BaseQuery) => {
+      store.dispatch(applyFromHistory(query));
     },
     [store]
   );

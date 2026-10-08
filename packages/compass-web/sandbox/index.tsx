@@ -90,6 +90,7 @@ const App = () => {
           history={hashHistory}
           highlighterBackend={highlighterBackend}
           onDefaultConnectionRequest={resolveDefaultConnection}
+          localAiEndpoint="/local-ai"
         ></CompassWeb>
         <OpenInAtlasToast></OpenInAtlasToast>
       </Body>

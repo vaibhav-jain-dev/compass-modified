@@ -28,7 +28,11 @@ import type { DocumentJsonViewProps } from './document-json-view';
 import VirtualizedDocumentJsonView from './virtualized-document-json-view';
 import type { DocumentTableViewProps } from './table-view/document-table-view';
 import DocumentTableView from './table-view/document-table-view';
-import { HighlighterFieldDecorations } from '@mongodb-js/compass-highlighter';
+import {
+  HighlighterFieldDecorations,
+  HighlighterQueriesMenu,
+} from '@mongodb-js/compass-highlighter';
+import { useApplyQueryBarQuery } from '@mongodb-js/compass-query-bar';
 import type { CrudToolbarProps } from './crud-toolbar';
 import { CrudToolbar } from './crud-toolbar';
 import type { Document } from 'hadron-document';
@@ -419,6 +423,15 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
   const toggleEditMode = useCallback(() => setEditMode((v) => !v), []);
   const isEditable = canEdit && editMode;
 
+  // Fork extra feature: predefined queries from the highlighter files
+  const applyQueryBarQuery = useApplyQueryBarQuery();
+  const queriesMenu = (
+    <HighlighterQueriesMenu
+      namespace={ns}
+      onApply={(parts) => applyQueryBarQuery(parts)}
+    />
+  );
+
   const isEmpty = docs.length === 0;
 
   const isInitialFetch = status === DOCUMENTS_STATUS_FETCHED_INITIAL;
@@ -622,6 +635,7 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
             readonly={!canEdit}
             editMode={canEdit ? editMode : undefined}
             onToggleEditMode={canEdit ? toggleEditMode : undefined}
+            extraLeftActions={queriesMenu}
             viewSwitchHandler={handleViewChanged}
             isWritable={isWritable}
             instanceDescription={instanceDescription}

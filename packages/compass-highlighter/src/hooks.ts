@@ -13,7 +13,7 @@ import type {
   ResolvedTag,
 } from './config/resolve';
 import { PathIndex } from './config/paths';
-import type { ListingMode } from './config/schema';
+import type { ListingMode, QueryConfig } from './config/schema';
 import { indexMappings } from './config/mappings';
 import type { MappingTarget } from './config/mappings';
 import { namespaceToDatabase } from './config/paths';
@@ -27,6 +27,7 @@ const NO_STATE: HighlighterState = {
   tagFilter: [],
   mappings: { byDatabase: {}, errors: {} },
   models: { byDatabase: {}, errors: {} },
+  aiStatusUrl: null,
 };
 
 /**
@@ -122,6 +123,29 @@ export function useModelCollections(): ReadonlyMap<string, ResolvedCollection> {
         : new Map<string, ResolvedCollection>(),
     [config, byDatabase]
   );
+}
+
+/**
+ * Predefined queries for a namespace: the active feature's `queries` that
+ * target it, plus collection-level `queries` from the feature and the model
+ * file. Drives the Documents tab menu.
+ */
+export function useQueriesForNamespace(namespace: string): QueryConfig[] {
+  const feature = useActiveFeature();
+  const models = useModelCollections();
+  return useMemo(() => {
+    const out: QueryConfig[] = [];
+    for (const q of feature?.queries ?? []) {
+      if (q.namespace === namespace) out.push(q);
+    }
+    for (const c of [
+      feature?.collectionsByNamespace.get(namespace),
+      models.get(namespace),
+    ]) {
+      for (const q of c?.queries ?? []) out.push({ ...q, namespace });
+    }
+    return out;
+  }, [feature, models, namespace]);
 }
 
 export type EffectiveFields = {

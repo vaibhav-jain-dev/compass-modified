@@ -14,6 +14,7 @@ import {
   useQueryBarComponent,
   useChangeQueryBarQuery,
   useQueryBarQuery,
+  useApplyQueryBarQuery,
   useLastAppliedQuery,
   useIsLastAppliedQueryOutdated,
   queryBarServiceLocator,
@@ -84,6 +85,7 @@ export default QueryBarPlugin;
 export {
   useChangeQueryBarQuery,
   useQueryBarQuery,
+  useApplyQueryBarQuery,
   useLastAppliedQuery,
   useIsLastAppliedQueryOutdated,
   queryBarServiceLocator,

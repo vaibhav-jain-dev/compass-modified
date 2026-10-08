@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Badge,
   Banner,
@@ -381,6 +381,93 @@ const Checklist: React.FunctionComponent<{ feature: ResolvedFeature }> = ({
   );
 };
 
+type LocalAiStatus = {
+  enabled: boolean;
+  model?: string | null;
+  requestedModel?: string;
+  loaded?: boolean;
+  warming?: boolean;
+  reason?: string;
+  lastError?: string | null;
+  configFile?: string;
+};
+
+/**
+ * Fork extra feature (see extra-features/local-ai.md): what the local
+ * "Generate query" model is doing, with a warm-up button.
+ */
+const LocalAiStatusSection: React.FunctionComponent = () => {
+  const url = useHighlighterState((s) => s.aiStatusUrl);
+  const [status, setStatus] = useState<LocalAiStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = useCallback(async () => {
+    if (!url) return;
+    try {
+      const res = await fetch(url, { cache: 'no-store' });
+      setStatus((await res.json()) as LocalAiStatus);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }, [url]);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+  if (!url) {
+    return null;
+  }
+  const warmup = async () => {
+    await fetch(url.replace(/\/status$/, '/warmup'), { method: 'POST' });
+    setTimeout(() => void refresh(), 1500);
+  };
+  return (
+    <div className={sectionStyles} data-testid="highlighter-local-ai">
+      <div className={rowStyles}>
+        <Subtitle>Local AI</Subtitle>
+        {status?.enabled && status.model && (
+          <Badge variant={status.loaded ? 'green' : 'lightgray'}>
+            {status.model} ·{' '}
+            {status.loaded
+              ? 'loaded on GPU'
+              : status.warming
+                ? 'loading…'
+                : 'not loaded'}
+          </Badge>
+        )}
+        {status && !status.enabled && <Badge variant="red">unavailable</Badge>}
+        <Button size="xsmall" onClick={() => void refresh()}>
+          Refresh
+        </Button>
+        {status?.enabled && status.model && !status.loaded && (
+          <Button size="xsmall" variant="primary" onClick={() => void warmup()}>
+            Load model now
+          </Button>
+        )}
+      </div>
+      {error && <Banner variant="danger">{error}</Banner>}
+      {status && !status.enabled && (
+        <Banner variant="warning">{status.reason}</Banner>
+      )}
+      {status?.enabled && !status.model && (
+        <Banner variant="warning">
+          No usable model installed. Run{' '}
+          <InlineCode>ollama pull {status.requestedModel}</InlineCode>.
+        </Banner>
+      )}
+      {status?.lastError && (
+        <Banner variant="danger">{status.lastError}</Banner>
+      )}
+      <Description>
+        "Generate query" in the Documents tab uses this model and the notes in
+        these files. Settings:{' '}
+        <InlineCode>
+          {status?.configFile ?? '~/compass-highlighter/ai.yaml'}
+        </InlineCode>
+      </Description>
+    </div>
+  );
+};
+
 const MappingsStatus: React.FunctionComponent = () => {
   const byDatabase = useHighlighterState((s) => s.mappings.byDatabase);
   const errors = useHighlighterState((s) => s.mappings.errors);
@@ -592,6 +679,8 @@ export const HighlighterWorkspace: React.FunctionComponent = () => {
           )}
 
           <MappingsStatus />
+
+          <LocalAiStatusSection />
 
           {feature.relations.length > 0 && (
             <div className={sectionStyles}>

@@ -174,6 +174,8 @@ export type CrudToolbarProps = {
    */
   editMode?: boolean;
   onToggleEditMode?: () => void;
+  /** Fork extra feature: extra controls rendered after Export Code */
+  extraLeftActions?: React.ReactNode;
 };
 
 const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
@@ -211,6 +213,7 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
   updateMaxDocumentsPerPage,
   editMode,
   onToggleEditMode,
+  extraLeftActions,
 }) => {
   const track = useTelemetry();
   const connectionInfoRef = useConnectionInfoRef();
@@ -388,6 +391,7 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
           >
             <span className={exportCodeButtonTextStyles}>Export Code</span>
           </Button>
+          {extraLeftActions}
           {insights && <SignalPopover signals={insights} />}
         </div>
         <div className={toolbarRightActionStyles}>

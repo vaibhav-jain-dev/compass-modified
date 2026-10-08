@@ -1,0 +1,29 @@
+# Local AI for "Generate query" (fork extra feature). Lives at
+# ~/compass-highlighter/ai.yaml next to the highlighter files. Optional: when
+# the file is missing the web sandbox still enables local AI with these
+# defaults as long as an Ollama server answers on localhost:11434.
+#
+# The model runs on your own GPU through Ollama (https://ollama.com). The
+# first request after a start loads the model into VRAM (a few seconds, a
+# toast says so); later requests are fast. Nothing leaves the machine.
+
+provider: ollama
+baseUrl: http://localhost:11434 # Ollama API; OLLAMA_HOST env overrides
+model: qwen2.5-coder:7b # see "Choosing a model" in extra-features/local-ai.md
+fallbackModels: # used when `model` is not installed, first installed wins
+  - llama3.1:8b
+  - qwen2.5:7b
+temperature: 0 # deterministic structured output
+numCtx: 8192 # context window; raise for very wide schemas
+keepAlive: 30m # how long Ollama keeps the model loaded after a request
+warmupOnStart: true # load the model when the sandbox starts, in the background
+timeoutMs: 60000
+
+# What the prompt gets from the highlighter files for the collection being
+# queried. All on by default; turn off to debug prompt size issues.
+context:
+  collectionNotes: true # alias and notes from models/ and the active feature
+  fieldMeanings: true # field labels and notes
+  relations: true # mappings/ entries as "X points at Y"
+  exampleQueries: true # `queries:` entries as worked examples
+  maxFields: 60

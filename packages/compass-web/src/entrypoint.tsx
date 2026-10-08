@@ -124,14 +124,18 @@ const preferencesLoadingContainerStyles = css({
   justifyContent: 'center',
 });
 
-const WithAtlasProviders: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+const WithAtlasProviders: React.FC<{
+  localAiEndpoint?: string;
+  children: React.ReactNode;
+}> = ({ localAiEndpoint, children }) => {
   return (
     <AtlasCloudAuthServiceProvider>
       <AtlasClusterConnectionsOnlyProvider value={true}>
         <AtlasAdminApiServiceProvider>
-          <AtlasAiServiceProvider apiURLPreset="cloud">
+          <AtlasAiServiceProvider
+            apiURLPreset="cloud"
+            localAiEndpoint={localAiEndpoint}
+          >
             {children}
           </AtlasAiServiceProvider>
         </AtlasAdminApiServiceProvider>
@@ -321,6 +325,13 @@ export type CompassWebProps = {
    * the case when compass-web is embedded in Atlas.
    */
   highlighterBackend?: HighlighterConfigBackend;
+
+  /**
+   * Fork extra feature (see extra-features/local-ai.md). Endpoint of the
+   * local AI proxy, e.g. `/local-ai`; "Generate query" then uses a model on
+   * the local GPU. Omitted in Atlas.
+   */
+  localAiEndpoint?: string;
 
   /**
    * Fork-specific. Called on start-up when the URL does not name a connection
@@ -577,6 +588,7 @@ const CompassWebWithPreferences = ({
   historyRoutePrefix,
   highlighterBackend,
   onDefaultConnectionRequest,
+  localAiEndpoint,
 }: CompassWebProps) => {
   const appRegistry = useInitialValue(new AppRegistry());
   const preferences = usePreferencesContext();
@@ -601,7 +613,7 @@ const CompassWebWithPreferences = ({
         <LoggerProvider value={logger}>
           <TelemetryProvider options={telemetryOptions}>
             <CompassComponentsProviderWeb darkMode={darkMode}>
-              <WithAtlasProviders>
+              <WithAtlasProviders localAiEndpoint={localAiEndpoint}>
                 <WithMultiplexTransport projectId={projectId}>
                   <WithStorageProviders orgId={orgId} projectId={projectId}>
                     <DataModelStorageServiceProviderWeb
@@ -663,6 +675,11 @@ const CompassWebWithPreferences = ({
                                 <FieldStorePlugin>
                                   <HighlighterPlugin
                                     backend={highlighterBackend}
+                                    aiStatusUrl={
+                                      localAiEndpoint
+                                        ? `${localAiEndpoint}/status`
+                                        : undefined
+                                    }
                                   >
                                     <WithConnectionsStore>
                                       <CompassWorkspace

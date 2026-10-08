@@ -28,6 +28,8 @@ export type HighlighterState = {
   tagFilter: string[];
   mappings: MappingsState;
   models: ModelsState;
+  /** Where to read the local AI status from (web sandbox), if anywhere */
+  aiStatusUrl: string | null;
 };
 
 export const HighlighterActionTypes = {
@@ -80,6 +82,7 @@ export const INITIAL_STATE: HighlighterState = {
   tagFilter: [],
   mappings: { byDatabase: {}, errors: {} },
   models: { byDatabase: {}, errors: {} },
+  aiStatusUrl: null,
 };
 
 export const reducer: Reducer<HighlighterState, HighlighterAction> = (

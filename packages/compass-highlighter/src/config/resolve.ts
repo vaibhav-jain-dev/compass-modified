@@ -70,6 +70,7 @@ export type ResolvedCollection = {
   fields: ResolvedField[];
   /** Lookup by concrete path; patterns with wildcards are supported */
   fieldsByPath: PathIndex<ResolvedField>;
+  queries: QueryConfig[];
 };
 
 export type ResolvedFeature = {
@@ -155,6 +156,7 @@ function resolveCollectionEntry(
     notes: collection.notes,
     fields,
     fieldsByPath,
+    queries: collection.queries ?? [],
   };
 }
 

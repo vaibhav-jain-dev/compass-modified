@@ -10,11 +10,12 @@ where it lives, and how to use and extend it.
 
 ## Feature index
 
-| Feature          | Status                      | Doc                                                                                    | Packages touched                                                                                                                         |
-| ---------------- | --------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Highlighter      | done                        | [highlighter.md](highlighter.md), [highlighter.example.yaml](highlighter.example.yaml) | compass-highlighter (new), compass-components, compass-sidebar, compass-workspaces, compass-settings, compass-preferences-model, compass |
-| Deep links       | planned (after Highlighter) | [deep-links.md](deep-links.md)                                                         | compass-highlighter, compass, compass-crud, compass-workspaces                                                                           |
-| Edit mode toggle | done                        | [edit-mode-toggle.md](edit-mode-toggle.md)                                             | compass-crud                                                                                                                             |
+| Feature                   | Status                      | Doc                                                                                    | Packages touched                                                                                                                         |
+| ------------------------- | --------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Highlighter               | done                        | [highlighter.md](highlighter.md), [highlighter.example.yaml](highlighter.example.yaml) | compass-highlighter (new), compass-components, compass-sidebar, compass-workspaces, compass-settings, compass-preferences-model, compass |
+| Deep links                | planned (after Highlighter) | [deep-links.md](deep-links.md)                                                         | compass-highlighter, compass, compass-crud, compass-workspaces                                                                           |
+| Edit mode toggle          | done                        | [edit-mode-toggle.md](edit-mode-toggle.md)                                             | compass-crud                                                                                                                             |
+| Local AI query generation | in-progress                 | [local-ai.md](local-ai.md), [ai.example.yaml](ai.example.yaml)                         | compass-generative-ai, compass-web, compass-query-bar, compass-crud, compass-highlighter                                                 |
 
 Statuses: `planned` (doc written, code not started), `in-progress`, `done`, `deprecated`.
 
@@ -72,6 +73,8 @@ so the agent knows the file format and workflow without reading the code. Curren
 - [`models`](../.claude/skills/models/SKILL.md): maintain `models/<database>.yaml`, what fields
   mean and how they are highlighted regardless of the active feature.
 - All three validate with [`validate-highlighter.sh`](validate-highlighter.sh).
+- [`local-ai`](../.claude/skills/local-ai/SKILL.md): configure and debug local "Generate
+  query", and teach the model through the highlighter files.
 
 ## Conventions
 

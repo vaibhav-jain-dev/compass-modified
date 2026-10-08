@@ -72,6 +72,19 @@ The permanent fix is `wsl --shutdown` from PowerShell, or `networkingMode=nat` i
 The Highlighter config lives at `~/compass-highlighter/highlighter.yaml`; see
 [`extra-features/highlighter.md`](extra-features/highlighter.md).
 
+**Local AI for "Generate query"** (web sandbox): install [Ollama](https://ollama.com) in WSL
+and pull a model, then start the sandbox as usual:
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen2.5-coder:7b     # ~4.7 GB, fits an 8 GB GPU
+```
+
+The first query after a start loads the model onto the GPU (a toast says so); later ones take
+a few seconds. Optional settings go in `~/compass-highlighter/ai.yaml` (see
+[`extra-features/ai.example.yaml`](extra-features/ai.example.yaml)); details and
+troubleshooting in [`extra-features/local-ai.md`](extra-features/local-ai.md).
+
 ## Contributing
 
 For contributing, please refer to [CONTRIBUTING.md](CONTRIBUTING.md)

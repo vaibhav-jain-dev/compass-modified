@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { AtlasAiService } from './atlas-ai-service';
+import { LocalAiService } from './local-ai-service';
 import { ToolsController } from './tools-controller';
 import {
   preferencesLocator,
@@ -18,9 +19,16 @@ const AtlasAiServiceContext = createContext<AtlasAiService | null>(null);
 
 export const AtlasAiServiceProvider: React.FC<{
   apiURLPreset: 'private-api' | 'cloud';
+  /**
+   * Fork extra feature: when set, query generation goes to a local model
+   * through this endpoint (e.g. `/local-ai`) instead of the Atlas assistant.
+   * See extra-features/local-ai.md.
+   */
+  localAiEndpoint?: string;
   children?: React.ReactNode;
 }> = createServiceProvider(function AtlasAiServiceProvider({
   apiURLPreset,
+  localAiEndpoint,
   children,
 }) {
   const logger = useLogger('ATLAS-AI-SERVICE');
@@ -28,13 +36,22 @@ export const AtlasAiServiceProvider: React.FC<{
   const atlasService = atlasServiceLocator();
 
   const aiService = useMemo(() => {
+    if (localAiEndpoint) {
+      return new LocalAiService({
+        endpoint: localAiEndpoint,
+        apiURLPreset,
+        atlasService,
+        preferences,
+        logger,
+      });
+    }
     return new AtlasAiService({
       apiURLPreset,
       atlasService,
       preferences,
       logger,
     });
-  }, [apiURLPreset, preferences, logger, atlasService]);
+  }, [apiURLPreset, localAiEndpoint, preferences, logger, atlasService]);
 
   return (
     <AtlasAiServiceContext.Provider value={aiService}>

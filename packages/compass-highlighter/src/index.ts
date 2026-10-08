@@ -60,6 +60,8 @@ export {
   HighlighterTagFilter,
   useHighlighterTagFilterActive,
 } from './components/tag-filter';
+export { HighlighterQueriesMenu } from './components/queries-menu';
+export type { ParsedQueryParts } from './config/queries';
 export { HighlighterFieldDecorations } from './components/field-decorations';
 export {
   useActiveFeature,

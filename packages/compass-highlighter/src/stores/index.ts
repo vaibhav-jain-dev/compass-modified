@@ -330,7 +330,8 @@ export const createConfigFromExample =
 
 export function configureStore(
   services: HighlighterServices,
-  backend: ConfigBackend
+  backend: ConfigBackend,
+  aiStatusUrl: string | null = null
 ) {
   return createStore(
     reducer,
@@ -338,6 +339,7 @@ export function configureStore(
       ...INITIAL_STATE,
       configPath: backend.path,
       status: backend instanceof NullConfigBackend ? 'disabled' : 'loading',
+      aiStatusUrl,
     },
     applyMiddleware(
       thunk.withExtraArgument<HighlighterExtraArgs>({ ...services, backend })
@@ -353,15 +355,17 @@ export type HighlighterPluginProps = {
    * compass-web sandbox an HTTP backend. Without one the plugin is disabled.
    */
   backend?: ConfigBackend;
+  /** `/local-ai/status` style URL; the Highlighter tab shows the model state */
+  aiStatusUrl?: string;
   children?: React.ReactNode;
 };
 
 export function activatePlugin(
-  { backend = new NullConfigBackend() }: HighlighterPluginProps,
+  { backend = new NullConfigBackend(), aiStatusUrl }: HighlighterPluginProps,
   services: HighlighterServices,
   { addCleanup, cleanup }: ActivateHelpers
 ) {
-  const store = configureStore(services, backend);
+  const store = configureStore(services, backend, aiStatusUrl ?? null);
   void store.dispatch(loadConfig());
   addCleanup(
     backend.watch(() => {

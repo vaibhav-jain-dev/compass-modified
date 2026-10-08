@@ -75,19 +75,6 @@ export const COLLECTION_ROLES = ['changes', 'linked', 'untouched'] as const;
 export const CollectionRoleSchema = z.enum(COLLECTION_ROLES);
 export type CollectionRole = z.output<typeof CollectionRoleSchema>;
 
-export const CollectionSchema = z
-  .object({
-    namespace: z.string(),
-    style: z.string().optional(),
-    role: CollectionRoleSchema.optional(),
-    alias: z.string().optional(),
-    tags: z.array(z.string()).optional(),
-    notes: z.string().optional(),
-    fields: z.array(FieldSchema).optional(),
-  })
-  .passthrough();
-export type CollectionConfig = z.output<typeof CollectionSchema>;
-
 export const QuerySchema = z
   .object({
     title: z.string(),
@@ -103,6 +90,22 @@ export const QuerySchema = z
   })
   .passthrough();
 export type QueryConfig = z.output<typeof QuerySchema>;
+
+export const CollectionSchema = z
+  .object({
+    namespace: z.string(),
+    style: z.string().optional(),
+    role: CollectionRoleSchema.optional(),
+    alias: z.string().optional(),
+    tags: z.array(z.string()).optional(),
+    notes: z.string().optional(),
+    fields: z.array(FieldSchema).optional(),
+    // predefined queries for this collection: the Documents tab "Queries"
+    // menu and the local AI's worked examples
+    queries: z.array(QuerySchema).optional(),
+  })
+  .passthrough();
+export type CollectionConfig = z.output<typeof CollectionSchema>;
 
 export const CodeRefSchema = z
   .object({
