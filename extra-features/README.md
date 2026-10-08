@@ -65,9 +65,13 @@ how to test it. Start there before touching the code.
 Features that agents operate on day to day get a project skill under `.claude/skills/<feature>/`
 so the agent knows the file format and workflow without reading the code. Currently:
 
-- [`highlighter`](../.claude/skills/highlighter/SKILL.md): edit `highlighter.yaml` and the
-  per-database `mappings/<database>.yaml` and `models/<database>.yaml` on request and validate them with
-  [`validate-highlighter.sh`](validate-highlighter.sh).
+- [`highlighter`](../.claude/skills/highlighter/SKILL.md): edit `highlighter.yaml` (features,
+  notes, queries, checks) on request.
+- [`mappings`](../.claude/skills/mappings/SKILL.md): maintain `mappings/<database>.yaml`, which
+  field points at which document.
+- [`models`](../.claude/skills/models/SKILL.md): maintain `models/<database>.yaml`, what fields
+  mean and how they are highlighted regardless of the active feature.
+- All three validate with [`validate-highlighter.sh`](validate-highlighter.sh).
 
 ## Conventions
 

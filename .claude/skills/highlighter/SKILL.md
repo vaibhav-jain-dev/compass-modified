@@ -74,6 +74,8 @@ Compass watches the file and reloads it within about a second. Rules:
 - **Mapping options**: `as: auto` (default) matches both an ObjectId and its hex string, for
   collections that store ids as text; `objectId` / `string` force one shape. `use: key` links
   from a map entry's key instead of its value (`from: occurrences.*`, `to: fields._id`).
+- **Mappings and models have their own skills** (`mappings`, `models`); use those for
+  "X points at Y" and "what does this field mean" requests.
 - **Mappings live in a separate file per database**: `mappings/<database>.yaml` next to the
   config (e.g. `~/compass-highlighter/mappings/devlms.yaml`), entries `from: collection.path`,
   `to: collection.path`, optional `label`, `as` (auto | objectId | string), `notes`. The user
