@@ -167,6 +167,13 @@ export type CrudToolbarProps = {
   querySkip?: number;
   docsPerPage: number;
   updateMaxDocumentsPerPage: (docsPerPage: number) => void;
+  /**
+   * Fork extra feature: documents are read-only until edit mode is switched
+   * on from the toolbar, so a double-click never starts an edit by accident.
+   * Undefined when the collection cannot be edited at all.
+   */
+  editMode?: boolean;
+  onToggleEditMode?: () => void;
 };
 
 const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
@@ -202,6 +209,8 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
   querySkip,
   docsPerPage,
   updateMaxDocumentsPerPage,
+  editMode,
+  onToggleEditMode,
 }) => {
   const track = useTelemetry();
   const connectionInfoRef = useConnectionInfoRef();
@@ -441,6 +450,21 @@ const CrudToolbar: React.FunctionComponent<CrudToolbarProps> = ({
               onClick={onClickRefreshDocuments}
             >
               <Icon glyph="Refresh" />
+            </IconButton>
+          )}
+          {onToggleEditMode && (
+            <IconButton
+              aria-label={editMode ? 'Turn edit mode off' : 'Turn edit mode on'}
+              title={
+                editMode
+                  ? 'Edit mode is on: documents can be edited. Click to make them read-only.'
+                  : 'Edit mode is off: documents are read-only. Click to allow editing.'
+              }
+              data-testid="crud-edit-mode-toggle"
+              active={!!editMode}
+              onClick={onToggleEditMode}
+            >
+              <Icon glyph="Edit" />
             </IconButton>
           )}
 

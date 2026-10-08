@@ -883,4 +883,20 @@ describe('CrudToolbar Component', function () {
       ).to.have.attribute('aria-disabled', 'true');
     });
   });
+
+  describe('edit mode toggle (fork)', function () {
+    it('is hidden when the collection cannot be edited', function () {
+      renderCrudToolbar({ readonly: true });
+      expect(screen.queryByTestId('crud-edit-mode-toggle')).to.not.exist;
+    });
+
+    it('shows the current state and toggles it', function () {
+      const onToggleEditMode = sinon.spy();
+      renderCrudToolbar({ editMode: false, onToggleEditMode });
+      const toggle = screen.getByTestId('crud-edit-mode-toggle');
+      expect(toggle).to.have.attribute('aria-label', 'Turn edit mode on');
+      userEvent.click(toggle);
+      expect(onToggleEditMode).to.have.been.calledOnce;
+    });
+  });
 });
