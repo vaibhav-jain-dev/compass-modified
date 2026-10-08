@@ -34,4 +34,8 @@ if (analyze) {
   process.argv = process.argv.filter((key) => key !== '--analyze');
 }
 
+if (process.argv.includes('serve')) {
+  require('./serve-lifecycle').install();
+}
+
 require(path.resolve(path.dirname(pkgPath), pkg.bin['webpack-cli']));

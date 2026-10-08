@@ -1,3 +1,17 @@
+## Extra Features (fork-specific)
+
+This repository is a fork of upstream Compass with extra features that upstream does not have.
+Before working on any fork-specific functionality, read
+[`extra-features/README.md`](extra-features/README.md). It is the index of all extra features and
+links to one doc per feature describing what it does, how to enable and use it, where the code
+lives, and how to test it.
+
+- When adding a new extra feature, create its doc from
+  [`extra-features/TEMPLATE.md`](extra-features/TEMPLATE.md) and add it to the index.
+- Keep extra feature code isolated from upstream files where possible, and record every upstream
+  file you modify in the feature doc, so upstream merges stay manageable.
+- When changing an existing extra feature, update its doc in the same change.
+
 ## Performance Red Flags
 
 - Spot inefficient loops and algorithmic issues

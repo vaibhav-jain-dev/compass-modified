@@ -1,4 +1,5 @@
 import type { Compiler } from 'webpack';
+import { getDevServerPort } from './dev-server-port';
 import { pathToFileURL } from 'url';
 import { EnvironmentPlugin } from 'webpack';
 import path from 'path';
@@ -72,7 +73,7 @@ export class WebpackPluginStartElectron {
         this.rendererCompiler.options.devServer &&
         this.rendererCompiler.options.devServer.port
           ? this.rendererCompiler.options.devServer.port
-          : 4242;
+          : getDevServerPort();
 
       // This will set environmental variables that can be used by main process to
       // know what BrowserWindow to open exactly
@@ -118,6 +119,20 @@ export class WebpackPluginStartElectron {
         }
       );
 
+      // Fork-specific: never leave the Electron app behind when the dev
+      // server goes away (signal, parent death, uncaught error).
+      const stopOnExit = () => {
+        this.electronProcess?.kill('SIGTERM');
+        this.electronProcess = null;
+      };
+      process.once('exit', stopOnExit);
+      for (const signal of ['SIGTERM', 'SIGHUP'] as const) {
+        process.once(signal, () => {
+          stopOnExit();
+          process.exit(0);
+        });
+      }
+
       // When afterDone fires for any of the compilers, we will store this info
       // and will try to start the app
       this.mainCompiler.hooks.afterDone.tap(
@@ -161,6 +176,19 @@ export class WebpackPluginStartElectron {
       process.env.ELECTRON_EXTRA_ARGS?.split(' ').map((arg) => {
         return arg.trim();
       });
+    // Fork-specific: under WSLg Electron renders at 1x regardless of the
+    // Windows display scale, which makes the window tiny on HiDPI monitors.
+    const scaleFactor = process.env.COMPASS_DEVICE_SCALE_FACTOR;
+    if (scaleFactor && Number(scaleFactor) > 0) {
+      // Compass validates CLI flags as preferences, so the Chromium flag has
+      // to be explicitly allowed through.
+      extraArgs = [
+        ...(extraArgs ?? []),
+        '--ignore-additional-command-line-flags',
+        `--force-device-scale-factor=${scaleFactor}`,
+      ];
+      this.logger.info(`Using device scale factor ${scaleFactor}`);
+    }
     this.logger.info('Starting electron application');
     this.logger.info('- Ctrl+R to restart the main process');
     this.logger.info(

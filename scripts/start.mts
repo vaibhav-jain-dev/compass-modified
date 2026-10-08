@@ -2,6 +2,7 @@ import process from 'node:process';
 import child_process from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import net from 'node:net';
 import timers from 'node:timers/promises';
 import { pipeline } from 'node:stream/promises';
 import { Transform } from 'node:stream';
@@ -236,7 +237,56 @@ function spawnTarget(
   return subProcess;
 }
 
+// Fork-specific. Under WSL2 mirrored networking the kernel sometimes refuses
+// to bind any port outside its ephemeral range (EADDRINUSE on everything,
+// even loopback) until the VM is restarted. Ports handed out by the kernel
+// still work, so fall back to one of those instead of failing the start.
+const DEFAULT_DEV_SERVER_PORT = 4747;
+
+function canBind(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.listen(port, () => server.close(() => resolve(true)));
+  });
+}
+
+function getKernelAssignedPort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.once('error', reject);
+    server.listen(0, () => {
+      const { port } = server.address() as net.AddressInfo;
+      server.close(() => resolve(port));
+    });
+  });
+}
+
+async function resolveDevServerPort(): Promise<number> {
+  const requested = Number(process.env.COMPASS_DEV_SERVER_PORT);
+  const preferred =
+    Number.isInteger(requested) && requested > 0
+      ? requested
+      : DEFAULT_DEV_SERVER_PORT;
+  if (await canBind(preferred)) {
+    return preferred;
+  }
+  const fallback = await getKernelAssignedPort();
+  console.warn(
+    `${startPrefix}port ${preferred} cannot be bound (EADDRINUSE); using ${fallback} instead. ` +
+      `If every port fails, WSL mirrored networking is stuck; "wsl --shutdown" from Windows fixes it.`
+  );
+  return fallback;
+}
+
 if (targets.desktop.enabled) {
+  process.env.COMPASS_DEV_SERVER_PORT = String(await resolveDevServerPort());
+  if (process.env.WSL_DISTRO_NAME && !process.env.COMPASS_DEVICE_SCALE_FACTOR) {
+    console.log(
+      `${startPrefix}WSLg detected. If the window looks too small on a HiDPI monitor, ` +
+        `restart with COMPASS_DEVICE_SCALE_FACTOR=1.5 (or 2) npm run start`
+    );
+  }
   subProcesses.push(
     spawnTarget('start', 'mongodb-compass', targets.desktop.args, 'desktop')
   );

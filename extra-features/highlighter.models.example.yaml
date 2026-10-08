@@ -1,0 +1,49 @@
+# Example model file. One file per database, stored next to highlighter.yaml
+# as models/<database>.yaml (e.g. ~/compass-highlighter/models/shop.yaml).
+#
+# A model file holds what you know about the data model itself: what each
+# collection and field means, how to colour it, which tags apply. It applies
+# whatever feature is active in the dropdown (also when none is), so the
+# highlights you rely on every day do not depend on the ticket you picked.
+# Features in highlighter.yaml layer their own entries on top; for the same
+# path the feature's style and label win, tags and relations are combined.
+#
+# Styles and tags are the ones defined in highlighter.yaml. Paths use the
+# same syntax as there, plus wildcards: `*` matches one segment (a map keyed
+# by an id), `**` matches any depth.
+
+version: 1
+database: shop
+
+collections:
+  - namespace: orders # collection name; db.collection also accepted
+    alias: Order
+    style: primary
+    notes: One document per order.
+    fields:
+      - path: customerId
+        style: relation
+        label: owner
+      - path: items[].sku
+        style: relation
+        label: product
+        tags: [text-ids]
+      - path: payment.status
+        style: focus
+        label: enum
+        notes: 'pending | authorized | captured | failed'
+      - path: totals.*
+        style: focus
+        label: computed total (keyed by currency)
+      - path: '**.updatedAt'
+        style: muted
+
+  - namespace: customers
+    alias: Customer
+    style: focus
+    fields:
+      - path: email
+        style: focus
+      - path: defaultAddressId
+        style: relation
+        label: address

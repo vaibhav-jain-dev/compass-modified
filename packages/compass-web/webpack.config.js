@@ -10,6 +10,11 @@ const {
 const { execFile, spawn, execFileSync } = require('child_process');
 const { promisify } = require('util');
 const { createWebSocketProxy } = require('./scripts/ws-proxy');
+const {
+  pickPort,
+  createHighlighterConfigMiddleware,
+  getHighlighterConfigPath,
+} = require('./scripts/sandbox-dev-server');
 
 const execFileAsync = promisify(execFile);
 
@@ -27,7 +32,7 @@ const MAX_COMPRESSION_FILE_SIZE = 10_000_000;
 /**
  * @type {(env: Record<string, any>, args: Record<string, any>) => import('webpack').Configuration}
  */
-module.exports = (env, args) => {
+module.exports = async (env, args) => {
   const serve = isServe({ env });
   const watch = env.WEBPACK_WATCH === true;
 
@@ -337,6 +342,7 @@ module.exports = (env, args) => {
       path.resolve(__dirname, 'sandbox', 'sandbox-logger-and-telemetry.ts'),
       path.resolve(__dirname, 'sandbox', 'sandbox-connection-storage.tsx'),
       path.resolve(__dirname, 'sandbox', 'sandbox-multiplex-link.ts'),
+      path.resolve(__dirname, 'sandbox', 'sandbox-autoconnect.ts'),
       libraryConfig.entry.index,
     ];
   }
@@ -359,7 +365,23 @@ module.exports = (env, args) => {
   // For serve mode, we will create a local sandbox application that will
   // roughly reproduce how compass-web is embedded inside Atlas Cloud
   if (serve) {
-    const wsProxy = createWebSocketProxy(1337);
+    // Fork-specific: ports are configurable and fall back to a kernel-assigned
+    // port when the preferred one cannot be bound (WSL mirrored networking
+    // sometimes refuses every non-ephemeral port until the VM restarts).
+    const devServerPort = await pickPort(
+      Number(process.env.COMPASS_WEB_PORT) || 7777,
+      'dev server'
+    );
+    const wsPort = await pickPort(
+      Number(process.env.COMPASS_WEB_WS_PORT) || 1337,
+      'ws proxy'
+    );
+    const wsProxy = createWebSocketProxy(wsPort);
+    const underWsl = Boolean(process.env.WSL_DISTRO_NAME);
+    console.log(
+      `[compass-web sandbox] open http://localhost:${devServerPort}/ in your browser` +
+        ` (highlighter config: ${getHighlighterConfigPath()})`
+    );
 
     process.on('beforeExit', () => {
       for (const client of Array.from(wsProxy.clients())) {
@@ -391,8 +413,9 @@ module.exports = (env, args) => {
             process.env.DISABLE_DEVSERVER_OVERLAY === 'true'
               ? { warnings: false, errors: false, runtimeErrors: false }
               : { warnings: false, errors: true, runtimeErrors: true },
-          webSocketURL: 'ws://localhost:7777/ws',
+          webSocketURL: `ws://localhost:${devServerPort}/ws`,
         },
+        setupMiddlewares: createHighlighterConfigMiddleware,
         devMiddleware: {
           writeToDisk: true,
         },
@@ -402,10 +425,12 @@ module.exports = (env, args) => {
         },
         historyApiFallback: true,
         host: 'localhost',
-        port: 7777,
+        port: devServerPort,
         hot: libraryConfig.mode === 'development',
         liveReload: libraryConfig.mode === 'development',
-        open: process.env.OPEN_BROWSER !== 'false',
+        // Under WSL "open" would launch a Linux browser; the user wants the
+        // Windows one, so just print the URL instead.
+        open: process.env.OPEN_BROWSER !== 'false' && !underWsl,
         static: [
           {
             directory: path.resolve(__dirname, 'sandbox', 'static'),
@@ -425,6 +450,11 @@ module.exports = (env, args) => {
         new HtmlWebpackPlugin({
           title: 'Compass Web Sandbox',
           template: path.resolve(__dirname, 'sandbox', 'index.html'),
+        }),
+        new webpack.DefinePlugin({
+          'process.env.COMPASS_WEB_WS_URL': JSON.stringify(
+            `ws://localhost:${wsPort}`
+          ),
         }),
       ],
     });

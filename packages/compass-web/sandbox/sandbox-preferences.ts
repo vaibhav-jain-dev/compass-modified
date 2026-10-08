@@ -42,6 +42,12 @@ if (Object.hasOwn(globalThis, '__compassWebEnableSandboxPreferencesOverride')) {
       enableAtlasSignIn: false,
       optInGenAIFeatures: false,
       enableMyQueries: false,
+      // Fork-specific: the "Introducing MongoDB Assistant" guide cue races its
+      // focus trap on slower machines and throws "Your focus-trap must have at
+      // least one container with at least one tabbable node", which the dev
+      // server overlay then shows on every load. Guide cues are not needed in
+      // the sandbox.
+      enableGuideCues: false,
       telemetryAtlasUserId: 'compass_web_sandbox_telemetry_user_id',
     },
     undefined,

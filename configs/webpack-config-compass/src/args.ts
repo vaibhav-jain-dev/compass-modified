@@ -1,6 +1,7 @@
 import type { Configuration, WebpackOptionsNormalized } from 'webpack';
 import { merge } from 'webpack-merge';
 import path from 'path';
+import { getDevServerPort } from './dev-server-port';
 
 export type WebpackConfig = Configuration &
   Pick<WebpackOptionsNormalized, 'devServer'>;
@@ -70,7 +71,7 @@ export function webpackArgsWithDefaults(
           ? process.env.NODE_ENV
           : 'production',
       mainProcessLiveReload: true,
-      devServerPort: 4242,
+      devServerPort: getDevServerPort(),
       analyze: ['1', 'true'].includes(process.env.ANALYZE as string),
       cwd,
       coverage: process.env.COVERAGE || undefined,

@@ -17,8 +17,8 @@ Usage: start.mts [-h/--help] [targets... [targetOptions...]]
 
 ### Well-Known Ports
 
-| Port | Service                | Target    | Description                                     |
-| ---- | ---------------------- | --------- | ----------------------------------------------- |
-| 4242 | Webpack Dev Server     | `desktop` | Serves compiled frontend assets with hot reload |
-| 7777 | HTTP Proxy Server      | `sandbox` | Express proxy server for Atlas API requests     |
-| 1337 | WebSocket Proxy Server | `sandbox` | WebSocket proxy for MongoDB connections         |
+| Port | Service                | Target    | Description                                                                                             |
+| ---- | ---------------------- | --------- | ------------------------------------------------------------------------------------------------------- |
+| 4747 | Webpack Dev Server     | `desktop` | Serves compiled frontend assets with hot reload (fork default, override with `COMPASS_DEV_SERVER_PORT`) |
+| 7777 | HTTP Proxy Server      | `sandbox` | Express proxy server for Atlas API requests                                                             |
+| 1337 | WebSocket Proxy Server | `sandbox` | WebSocket proxy for MongoDB connections                                                                 |

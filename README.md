@@ -4,6 +4,74 @@ This repository contains the source code and build tooling used in [MongoDB Comp
 
 ![Aggregation Pipeline Builder Tab in Compass](packages/compass/compass-screenshot.png)
 
+## Extra Features
+
+This repository is a fork of [mongodb-js/compass](https://github.com/mongodb-js/compass) with
+additional features that are not part of upstream Compass. Every extra feature is documented in
+the [`extra-features/`](extra-features/README.md) folder, which lists what has been added, where
+the code lives, and how to use and test each feature. Read that index before working on
+fork-specific functionality.
+
+## Running this fork locally (WSL2 / Ubuntu)
+
+Prerequisites that upstream's `CONTRIBUTING.md` does not mention. Run them once:
+
+```bash
+# Electron runtime libraries (window, audio, keychain, notifications)
+sudo apt-get install -y libnss3 libasound2t64 libxss1 libsecret-1-0 libnotify4
+# Kerberos headers, needed by the native module rebuild that runs before `npm run start`
+sudo apt-get install -y libkrb5-dev
+```
+
+Node `>=24.15` and npm `>=11.16` are required (see `engines` in `package.json`). Then:
+
+```bash
+npm run bootstrap   # installs dependencies and compiles every package, takes several minutes
+npm run start-web   # primary target: web sandbox, prints the URL to open in your Windows browser
+```
+
+**The web build is the primary target of this fork.** Extra features are developed and verified
+in `npm run start-web` first. The Electron desktop app (`npm run start`) still builds and runs,
+but it is not kept in sync feature by feature and may lag behind; treat it as best effort.
+
+On start-up the sandbox reconnects to the connection you used last. If you never connected to
+anything, it connects to a local MongoDB at `mongodb://localhost:27017` when one is reachable
+from WSL (`COMPASS_LOCAL_MONGODB` overrides the connection string).
+
+`start-web` serves the sandbox on port 7777 and the websocket proxy on 1337 by default
+(`COMPASS_WEB_PORT`, `COMPASS_WEB_WS_PORT` override). Under WSL it does not try to open a
+browser; copy the printed `http://localhost:<port>/` into your Windows browser. The sandbox also
+serves `~/compass-highlighter/highlighter.yaml` at `/highlighter/config` so the Highlighter
+feature works in the browser against the same file agents edit (`COMPASS_HIGHLIGHTER_CONFIG`
+overrides the path).
+
+Under WSL2 the Electron window appears on the Windows desktop through WSLg. The dev build stores
+its data in the Linux home directory, so it never conflicts with an official Compass installed
+on Windows.
+
+This fork serves the dev build on port **4747** instead of upstream's 4242, so it can run next to
+an upstream Compass checkout. Override it with `COMPASS_DEV_SERVER_PORT=5050 npm run start`.
+
+**Window too small on a HiDPI monitor?** WSLg does not pass the Windows display scale to
+Electron. Set the scale yourself, for example:
+
+```bash
+COMPASS_DEVICE_SCALE_FACTOR=1.5 npm run start   # try 1.25, 1.5, 1.75 or 2
+```
+
+Put `export COMPASS_DEVICE_SCALE_FACTOR=1.5` in your `~/.zshrc` to make it permanent. Inside the
+app, Ctrl + = and Ctrl + - zoom the content and the zoom level is remembered.
+
+Under WSL mirrored networking the kernel sometimes refuses to bind any port outside its
+ephemeral range (`EADDRINUSE` on everything, even loopback) until the VM is restarted.
+Both `npm run start-web` and `npm run start` detect this and fall back to kernel-assigned ports
+automatically, printing `port ... cannot be bound ... using <port>`. Use the URL that is printed.
+The permanent fix is `wsl --shutdown` from PowerShell, or `networkingMode=nat` in
+`C:\Users\<you>\.wslconfig`.
+
+The Highlighter config lives at `~/compass-highlighter/highlighter.yaml`; see
+[`extra-features/highlighter.md`](extra-features/highlighter.md).
+
 ## Contributing
 
 For contributing, please refer to [CONTRIBUTING.md](CONTRIBUTING.md)
