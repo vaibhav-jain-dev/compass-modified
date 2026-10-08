@@ -55,6 +55,12 @@ The eye button next to the search box toggles between "only the collections of t
 feature" and "everything" for the session, without touching the YAML. Tagged collections show an
 (i) icon; hovering lists the tags with their colours.
 
+The funnel button's filter popover has a "Highlighter tags" section: tick any number of tags
+(Select all / Clear) and the tree keeps only collections that carry one of them, on the
+collection itself or on one of its fields, from the feature or the model file. Databases left
+empty are hidden. The funnel shows a dot while a tag filter is active. The selection is for the
+session only.
+
 Depending on `display.listing` (global or per feature):
 
 - `all`: every database and collection is shown; highlighted collections get a coloured badge.

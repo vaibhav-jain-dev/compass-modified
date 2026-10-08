@@ -123,8 +123,9 @@ Then tell the user which feature is active; Compass reloads the files on its own
 ## 4. What the user sees (so you can explain it)
 
 - Sidebar: the feature dropdown; an eye button next to the search box that shows only the
-  active feature's collections; a coloured icon or dot on highlighted collections and an (i)
-  icon listing their tags.
+  active feature's collections; the funnel's filter popover with a multi-select of highlighter
+  tags (Select all / Clear) that narrows the tree to tagged collections; a coloured icon or dot
+  on highlighted collections and an (i) icon listing their tags.
 - Documents tab: a banner above the list naming the collection (alias, icon, notes); highlighted
   rows in the style's colour with an uppercase chip for the field's `label`; expanded objects or
   arrays framed as a labelled region, nesting as the document nests; linkable ids drawn as pills.

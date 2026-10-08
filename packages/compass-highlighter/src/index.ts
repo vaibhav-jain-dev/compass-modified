@@ -56,11 +56,16 @@ export const WorkspaceTab: WorkspacePlugin<typeof WorkspaceName> = {
 
 export { HighlighterFeatureSelect } from './components/feature-select';
 export { HighlighterListingToggle } from './components/listing-toggle';
+export {
+  HighlighterTagFilter,
+  useHighlighterTagFilterActive,
+} from './components/tag-filter';
 export { HighlighterFieldDecorations } from './components/field-decorations';
 export {
   useActiveFeature,
   useHighlighterEnabled,
   useHighlighterListing,
+  useHighlighterTags,
   filterConnectionsForHighlighter,
   type HighlighterListing,
   type CollectionDecoration,

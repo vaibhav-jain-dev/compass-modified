@@ -5,8 +5,11 @@ import {
   Tooltip,
   Body,
 } from '@mongodb-js/compass-components';
-import { useHighlighterDispatch } from '../stores/context';
-import { useActiveFeature, useHighlighterState } from '../hooks';
+import {
+  useActiveFeature,
+  useHighlighterState,
+  useHighlighterDispatchSafe,
+} from '../hooks';
 import { setListingOverride } from '../stores';
 
 /**
@@ -15,7 +18,7 @@ import { setListingOverride } from '../stores';
  * `display.listing` is not touched.
  */
 export const HighlighterListingToggle: React.FunctionComponent = () => {
-  const dispatch = useHighlighterDispatch();
+  const dispatch = useHighlighterDispatchSafe();
   const feature = useActiveFeature();
   const listingOverride = useHighlighterState((s) => s.listingOverride);
   const onlyInterested =

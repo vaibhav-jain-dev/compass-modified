@@ -211,6 +211,11 @@ const setIn = (path: YamlPathSegment[], value: unknown) =>
 export const setActiveFeature = (featureId: string | null) =>
   setIn(['activeFeature'], featureId);
 
+export const setTagFilter = (tagFilter: string[]): HighlighterAction => ({
+  type: HighlighterActionTypes.TagFilterChanged,
+  tagFilter,
+});
+
 export const setListingOverride = (
   listingOverride: ListingMode | null
 ): HighlighterAction => ({

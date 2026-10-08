@@ -15,6 +15,10 @@ import {
   useId,
 } from '@mongodb-js/compass-components';
 import type { ConnectionsFilter } from './use-filtered-connections';
+import {
+  HighlighterTagFilter,
+  useHighlighterTagFilterActive,
+} from '@mongodb-js/compass-highlighter';
 
 const containerStyles = css({
   display: 'flex',
@@ -71,8 +75,9 @@ export default function ConnectionsFilterPopover({
   const excludeInactiveToggleId = useId();
   const excludeInactiveLabelId = useId();
 
+  const isTagFilterActive = useHighlighterTagFilterActive();
   // Add future filters to the boolean below
-  const isActivated = filter.excludeInactive;
+  const isActivated = filter.excludeInactive || isTagFilterActive;
 
   // Manually handling the tooltip state instead of supplying a trigger
   // we do this to avoid the tooltip from rendering when the popover is open
@@ -143,6 +148,7 @@ export default function ConnectionsFilterPopover({
             Show only active connections
           </Label>
         </div>
+        <HighlighterTagFilter />
       </InteractivePopover>
     </>
   );

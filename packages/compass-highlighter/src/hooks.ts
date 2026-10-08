@@ -1,7 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import type { HighlighterState } from './stores/reducer';
-import { useHighlighterSelectorUnsafe } from './stores/context';
-import { resolveFeature, resolveModels } from './config/resolve';
+import {
+  useHighlighterSelectorUnsafe,
+  useHighlighterDispatch as useHighlighterDispatchUnsafe,
+} from './stores/context';
+import type { HighlighterStore } from './stores';
+import { resolveFeature, resolveModels, resolveTags } from './config/resolve';
 import type {
   ResolvedCollection,
   ResolvedFeature,
@@ -20,6 +24,7 @@ const NO_STATE: HighlighterState = {
   error: null,
   config: null,
   listingOverride: null,
+  tagFilter: [],
   mappings: { byDatabase: {}, errors: {} },
   models: { byDatabase: {}, errors: {} },
 };
@@ -43,6 +48,20 @@ export function useHighlighterState<T>(
 /** False when the plugin is not mounted or has no config backend. */
 export function useHighlighterEnabled(): boolean {
   return useHighlighterState((state) => state.status !== 'disabled');
+}
+
+/**
+ * Dispatch that is a no-op when the plugin is not mounted, for the same
+ * reason as `useHighlighterState`: sidebar and crud render these components
+ * in environments (compass-web in Atlas, unit tests) without the store.
+ */
+export function useHighlighterDispatchSafe(): HighlighterStore['dispatch'] {
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useHighlighterDispatchUnsafe();
+  } catch {
+    return ((action: unknown) => action) as HighlighterStore['dispatch'];
+  }
 }
 
 export function useHighlighterConfig() {
@@ -137,23 +156,85 @@ export function useEffectiveFields(namespace: string): EffectiveFields {
 export type HighlighterListing = {
   mode: ListingMode;
   feature: ResolvedFeature | null;
+  /** Tags selected in the sidebar filter; empty = no tag filtering */
+  tagFilter: ReadonlySet<string>;
   isCollectionInterested(namespace: string): boolean;
   isDatabaseInterested(database: string): boolean;
+  /** Tags on the collection or any of its fields, from the feature and the model file */
+  collectionTags(namespace: string): string[];
   getCollectionDecoration(namespace: string): CollectionDecoration | undefined;
   getDatabaseDecoration(database: string): CollectionDecoration | undefined;
 };
 
+/**
+ * Every tag that exists: declared under `tags:` plus any used on a collection
+ * or field in a feature or model file, resolved with a colour.
+ */
+export function useHighlighterTags(): ResolvedTag[] {
+  const config = useHighlighterConfig();
+  const models = useModelCollections();
+  return useMemo(() => {
+    if (!config) {
+      return [];
+    }
+    const names = new Set<string>(Object.keys(config.tags ?? {}));
+    const collect = (c: {
+      tags?: string[];
+      fields?: Array<{ tags?: string[] }>;
+    }) => {
+      for (const t of c.tags ?? []) names.add(t);
+      for (const f of c.fields ?? [])
+        for (const t of f.tags ?? []) names.add(t);
+    };
+    for (const feature of config.features) {
+      for (const c of feature.collections ?? []) collect(c);
+    }
+    for (const model of models.values()) {
+      collect({
+        tags: model.tags.map((t) => t.name),
+        fields: model.fields.map((f) => ({ tags: f.tags.map((t) => t.name) })),
+      });
+    }
+    return resolveTags(config, [...names].sort());
+  }, [config, models]);
+}
+
 export function useHighlighterListing(): HighlighterListing {
   const feature = useActiveFeature();
+  const models = useModelCollections();
   const listingOverride = useHighlighterState((s) => s.listingOverride);
+  const tagFilterList = useHighlighterState((s) => s.tagFilter);
+  const tagFilter = useMemo(() => new Set(tagFilterList), [tagFilterList]);
   const mode: ListingMode = feature
     ? (listingOverride ?? feature.display.listing)
     : 'all';
 
+  const collectionTags = useCallback(
+    (namespace: string): string[] => {
+      const names = new Set<string>();
+      for (const c of [
+        feature?.collectionsByNamespace.get(namespace),
+        models.get(namespace),
+      ]) {
+        for (const t of c?.tags ?? []) names.add(t.name);
+        for (const f of c?.fields ?? [])
+          for (const t of f.tags) names.add(t.name);
+      }
+      return [...names];
+    },
+    [feature, models]
+  );
+  const matchesTagFilter = useCallback(
+    (namespace: string) =>
+      tagFilter.size === 0 ||
+      collectionTags(namespace).some((t) => tagFilter.has(t)),
+    [tagFilter, collectionTags]
+  );
   const isCollectionInterested = useCallback(
     (namespace: string) =>
-      !feature || feature.collectionsByNamespace.has(namespace),
-    [feature]
+      (!feature || feature.collectionsByNamespace.has(namespace)) &&
+      matchesTagFilter(namespace),
+    [feature, matchesTagFilter]
   );
   const isDatabaseInterested = useCallback(
     (database: string) => !feature || feature.databases.has(database),
@@ -204,16 +285,20 @@ export function useHighlighterListing(): HighlighterListing {
     () => ({
       mode,
       feature,
+      tagFilter,
       isCollectionInterested,
       isDatabaseInterested,
+      collectionTags,
       getCollectionDecoration,
       getDatabaseDecoration,
     }),
     [
       mode,
       feature,
+      tagFilter,
       isCollectionInterested,
       isDatabaseInterested,
+      collectionTags,
       getCollectionDecoration,
       getDatabaseDecoration,
     ]
@@ -225,14 +310,17 @@ type AnyDatabase = { name: string; collections: AnyCollection[] };
 type AnyConnection = { connectionStatus: string; databases?: AnyDatabase[] };
 
 /**
- * Applies `only-interested` listing to the sidebar connection tree. Other
- * modes return the input untouched so the sidebar keeps its own memoisation.
+ * Applies the sidebar tag filter and, in `only-interested` mode, the active
+ * feature's collection list to the connection tree. Without either the input
+ * is returned untouched so the sidebar keeps its own memoisation.
  */
 export function filterConnectionsForHighlighter<C extends AnyConnection>(
   connections: C[],
   listing: HighlighterListing
 ): C[] {
-  if (listing.mode !== 'only-interested' || !listing.feature) {
+  const byFeature = listing.mode === 'only-interested' && !!listing.feature;
+  const byTags = listing.tagFilter.size > 0;
+  if (!byFeature && !byTags) {
     return connections;
   }
   return connections.map((connection) => {
@@ -240,13 +328,27 @@ export function filterConnectionsForHighlighter<C extends AnyConnection>(
       return connection;
     }
     const databases = connection.databases
-      .filter((db) => listing.isDatabaseInterested(db.name))
+      .filter((db) => !byFeature || listing.isDatabaseInterested(db.name))
       .map((db) => ({
         ...db,
-        collections: db.collections.filter((coll) =>
-          listing.isCollectionInterested(`${db.name}.${coll.name}`)
-        ),
-      }));
+        collections: db.collections.filter((coll) => {
+          const namespace = `${db.name}.${coll.name}`;
+          if (
+            byFeature &&
+            !listing.feature?.collectionsByNamespace.has(namespace)
+          ) {
+            return false;
+          }
+          return (
+            !byTags ||
+            listing
+              .collectionTags(namespace)
+              .some((t) => listing.tagFilter.has(t))
+          );
+        }),
+      }))
+      // a tag filter hides databases that end up empty
+      .filter((db) => !byTags || db.collections.length > 0);
     return { ...connection, databases };
   });
 }

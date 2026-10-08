@@ -24,6 +24,8 @@ export type HighlighterState = {
   // "Show all" in the sidebar is a temporary override and is deliberately
   // not written to the YAML.
   listingOverride: ListingMode | null;
+  // Sidebar tag filter (session only): null or empty = no tag filtering
+  tagFilter: string[];
   mappings: MappingsState;
   models: ModelsState;
 };
@@ -36,6 +38,7 @@ export const HighlighterActionTypes = {
   ListingOverrideChanged: 'compass-highlighter/ListingOverrideChanged',
   MappingsLoaded: 'compass-highlighter/MappingsLoaded',
   ModelsLoaded: 'compass-highlighter/ModelsLoaded',
+  TagFilterChanged: 'compass-highlighter/TagFilterChanged',
 } as const;
 
 export type HighlighterAction =
@@ -62,6 +65,10 @@ export type HighlighterAction =
   | {
       type: typeof HighlighterActionTypes.ModelsLoaded;
       models: ModelsState;
+    }
+  | {
+      type: typeof HighlighterActionTypes.TagFilterChanged;
+      tagFilter: string[];
     };
 
 export const INITIAL_STATE: HighlighterState = {
@@ -70,6 +77,7 @@ export const INITIAL_STATE: HighlighterState = {
   error: null,
   config: null,
   listingOverride: null,
+  tagFilter: [],
   mappings: { byDatabase: {}, errors: {} },
   models: { byDatabase: {}, errors: {} },
 };
@@ -111,6 +119,8 @@ export const reducer: Reducer<HighlighterState, HighlighterAction> = (
       return { ...state, mappings: action.mappings };
     case HighlighterActionTypes.ModelsLoaded:
       return { ...state, models: action.models };
+    case HighlighterActionTypes.TagFilterChanged:
+      return { ...state, tagFilter: action.tagFilter };
     default:
       return state;
   }
