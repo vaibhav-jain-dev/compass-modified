@@ -30,6 +30,8 @@ export type HighlighterState = {
   models: ModelsState;
   /** Where to read the local AI status from (web sandbox), if anywhere */
   aiStatusUrl: string | null;
+  /** Documents tab marks (colours, chips, banner, links) shown? Session only. */
+  decorationsVisible: boolean;
 };
 
 export const HighlighterActionTypes = {
@@ -41,6 +43,7 @@ export const HighlighterActionTypes = {
   MappingsLoaded: 'compass-highlighter/MappingsLoaded',
   ModelsLoaded: 'compass-highlighter/ModelsLoaded',
   TagFilterChanged: 'compass-highlighter/TagFilterChanged',
+  DecorationsToggled: 'compass-highlighter/DecorationsToggled',
 } as const;
 
 export type HighlighterAction =
@@ -71,6 +74,10 @@ export type HighlighterAction =
   | {
       type: typeof HighlighterActionTypes.TagFilterChanged;
       tagFilter: string[];
+    }
+  | {
+      type: typeof HighlighterActionTypes.DecorationsToggled;
+      visible: boolean;
     };
 
 export const INITIAL_STATE: HighlighterState = {
@@ -83,6 +90,7 @@ export const INITIAL_STATE: HighlighterState = {
   mappings: { byDatabase: {}, errors: {} },
   models: { byDatabase: {}, errors: {} },
   aiStatusUrl: null,
+  decorationsVisible: true,
 };
 
 export const reducer: Reducer<HighlighterState, HighlighterAction> = (
@@ -124,6 +132,8 @@ export const reducer: Reducer<HighlighterState, HighlighterAction> = (
       return { ...state, models: action.models };
     case HighlighterActionTypes.TagFilterChanged:
       return { ...state, tagFilter: action.tagFilter };
+    case HighlighterActionTypes.DecorationsToggled:
+      return { ...state, decorationsVisible: action.visible };
     default:
       return state;
   }

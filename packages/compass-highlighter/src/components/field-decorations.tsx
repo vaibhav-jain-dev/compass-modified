@@ -12,6 +12,7 @@ import {
   useActiveFeature,
   useEffectiveFields,
   useHighlighterConfig,
+  useHighlighterState,
   useMappingLookup,
   useModelCollections,
 } from '../hooks';
@@ -168,7 +169,12 @@ const FieldDecorations: React.FunctionComponent<{
   const lookup = useMappingLookup();
   const navigation = useRelatedNavigationFromPanel();
 
+  const visible = useHighlighterState((s) => s.decorationsVisible);
+
   const value = useMemo(() => {
+    if (!visible) {
+      return null;
+    }
     const featureCollection = feature?.collectionsByNamespace.get(namespace);
     const modelCollection = models.get(namespace);
     const headerSource = featureCollection ?? modelCollection;
@@ -271,7 +277,7 @@ const FieldDecorations: React.FunctionComponent<{
         };
       },
     };
-  }, [feature, config, fields, models, namespace, lookup, navigation]);
+  }, [visible, feature, config, fields, models, namespace, lookup, navigation]);
 
   return (
     <DocumentList.FieldDecorationsProvider value={value}>

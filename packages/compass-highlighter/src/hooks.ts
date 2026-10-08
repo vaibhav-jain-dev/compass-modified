@@ -28,6 +28,7 @@ const NO_STATE: HighlighterState = {
   mappings: { byDatabase: {}, errors: {} },
   models: { byDatabase: {}, errors: {} },
   aiStatusUrl: null,
+  decorationsVisible: true,
 };
 
 /**

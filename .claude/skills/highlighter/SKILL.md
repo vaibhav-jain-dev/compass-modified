@@ -135,6 +135,7 @@ Then tell the user which feature is active; Compass reloads the files on its own
   related documents in a floating panel. Panels are draggable by the grip, stay open side by
   side, show a copyable breadcrumb `collection.path[0].field → target(id)`, and have "Open in
   new tab". A link inside a panel opens another panel.
+- The highlighter button in the Documents toolbar hides or shows all marks for the session.
 - Editing is opt-in: documents are read-only until the pencil toggle in the Documents toolbar is
   on (fork feature, see `extra-features/edit-mode-toggle.md`).
 - Highlighter tab: the active feature's description, status, notes, artifacts, checklist,

@@ -124,6 +124,9 @@ names still work and get a stable colour.
 
 ### What a highlighted document looks like
 
+A highlighter button in the Documents toolbar (next to Queries) hides or shows every mark for
+the session, so a document can be read plainly and the marks brought back when needed.
+
 - A coloured banner above the document list (once, not per card) names the collection the way you
   think about it (the collection's `alias`, icon and notes, from the model file or the feature).
   Panels show the same banner once at the top.

@@ -216,6 +216,11 @@ export const setTagFilter = (tagFilter: string[]): HighlighterAction => ({
   tagFilter,
 });
 
+export const setDecorationsVisible = (visible: boolean): HighlighterAction => ({
+  type: HighlighterActionTypes.DecorationsToggled,
+  visible,
+});
+
 export const setListingOverride = (
   listingOverride: ListingMode | null
 ): HighlighterAction => ({

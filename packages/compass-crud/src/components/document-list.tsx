@@ -31,6 +31,7 @@ import DocumentTableView from './table-view/document-table-view';
 import {
   HighlighterFieldDecorations,
   HighlighterQueriesMenu,
+  HighlighterDecorationsToggle,
 } from '@mongodb-js/compass-highlighter';
 import { useApplyQueryBarQuery } from '@mongodb-js/compass-query-bar';
 import type { CrudToolbarProps } from './crud-toolbar';
@@ -426,10 +427,13 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
   // Fork extra feature: predefined queries from the highlighter files
   const applyQueryBarQuery = useApplyQueryBarQuery();
   const queriesMenu = (
-    <HighlighterQueriesMenu
-      namespace={ns}
-      onApply={(parts) => applyQueryBarQuery(parts)}
-    />
+    <>
+      <HighlighterQueriesMenu
+        namespace={ns}
+        onApply={(parts) => applyQueryBarQuery(parts)}
+      />
+      <HighlighterDecorationsToggle />
+    </>
   );
 
   const isEmpty = docs.length === 0;
