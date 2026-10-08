@@ -25,6 +25,7 @@ import CSFLEConnectionModal, {
 } from '../csfle-connection-modal';
 import type { ConnectionsFilter } from '../use-filtered-connections';
 import { setConnectionIsCSFLEEnabled } from '../../modules/data-service';
+import { HighlighterFeatureSelect } from '@mongodb-js/compass-highlighter';
 
 const TOAST_TIMEOUT_MS = 5000; // 5 seconds.
 
@@ -174,6 +175,7 @@ export function MultipleConnectionSidebar({
             isCompassWeb={isCompassWeb}
           />
           <Navigation currentLocation={activeWorkspace?.type ?? null} />
+          <HighlighterFeatureSelect />
           <HorizontalRule />
         </>
         <ConnectionsNavigation

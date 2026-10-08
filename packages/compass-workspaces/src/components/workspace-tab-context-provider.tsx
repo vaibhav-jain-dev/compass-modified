@@ -24,6 +24,7 @@ function getInitialPropsForWorkspace(tab: WorkspaceTab) {
     case 'Welcome':
     case 'My Queries':
     case 'Data Modeling':
+    case 'Highlighter':
     case 'Performance':
     case 'Databases':
       return null;

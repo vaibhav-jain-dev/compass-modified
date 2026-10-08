@@ -15,7 +15,7 @@ import { CompassSettingsPlugin } from '@mongodb-js/compass-settings';
 import { WelcomeModal } from '@mongodb-js/compass-welcome';
 import { type ConnectionStorage } from '@mongodb-js/connection-storage/provider';
 import { AppRegistryProvider } from '@mongodb-js/compass-app-registry';
-import React from 'react';
+import React, { useMemo } from 'react';
 import Workspace from './workspace';
 import { getExtraConnectionData } from '../utils/telemetry';
 import { CompassInstanceStorePlugin } from '@mongodb-js/compass-app-stores';
@@ -29,6 +29,9 @@ import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
 import { usePreferences } from 'compass-preferences-model/provider';
 import { CompassAssistantProvider } from '@mongodb-js/compass-assistant';
 import { APP_NAMES_FOR_PROMPT } from '@mongodb-js/compass-assistant';
+import { HighlighterPlugin } from '@mongodb-js/compass-highlighter';
+import { createPreferencesFileBackend } from '@mongodb-js/compass-highlighter/node';
+import { usePreferencesContext } from 'compass-preferences-model/provider';
 
 resetGlobalCSS();
 
@@ -68,21 +71,31 @@ const verticalSplitStyles = css({
 function noop() {}
 
 function Home({ appName }: HomeProps): React.ReactElement | null {
+  const preferences = usePreferencesContext();
+  const highlighterBackend = useMemo(
+    () => createPreferencesFileBackend(preferences),
+    [preferences]
+  );
   return (
     <ConnectionImportExportProvider>
       <CompassInstanceStorePlugin>
         <FieldStorePlugin>
-          <div data-testid="home" className={verticalSplitStyles}>
-            <AppRegistryProvider scopeName="Connections">
-              <Workspace onActiveWorkspaceTabChange={noop} appName={appName} />
-            </AppRegistryProvider>
-          </div>
-          <WelcomeModal></WelcomeModal>
-          <CompassSettingsPlugin></CompassSettingsPlugin>
-          <CompassFindInPagePlugin></CompassFindInPagePlugin>
-          <CompassGenerativeAIPlugin
-            isCloudOptIn={false}
-          ></CompassGenerativeAIPlugin>
+          <HighlighterPlugin backend={highlighterBackend}>
+            <div data-testid="home" className={verticalSplitStyles}>
+              <AppRegistryProvider scopeName="Connections">
+                <Workspace
+                  onActiveWorkspaceTabChange={noop}
+                  appName={appName}
+                />
+              </AppRegistryProvider>
+            </div>
+            <WelcomeModal></WelcomeModal>
+            <CompassSettingsPlugin></CompassSettingsPlugin>
+            <CompassFindInPagePlugin></CompassFindInPagePlugin>
+            <CompassGenerativeAIPlugin
+              isCloudOptIn={false}
+            ></CompassGenerativeAIPlugin>
+          </HighlighterPlugin>
         </FieldStorePlugin>
       </CompassInstanceStorePlugin>
     </ConnectionImportExportProvider>

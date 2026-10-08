@@ -1,4 +1,10 @@
-import React, { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import React, {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ObjectId } from 'bson';
 import {
   Button,
@@ -10,6 +16,7 @@ import {
   spacing,
   withDarkMode,
   useCurrentValueRef,
+  DocumentList as DocumentListComponents,
 } from '@mongodb-js/compass-components';
 import type { InsertDocumentDialogProps } from './insert-document-dialog';
 import InsertDocumentDialog from './insert-document-dialog';
@@ -21,6 +28,7 @@ import type { DocumentJsonViewProps } from './document-json-view';
 import VirtualizedDocumentJsonView from './virtualized-document-json-view';
 import type { DocumentTableViewProps } from './table-view/document-table-view';
 import DocumentTableView from './table-view/document-table-view';
+import { HighlighterFieldDecorations } from '@mongodb-js/compass-highlighter';
 import type { CrudToolbarProps } from './crud-toolbar';
 import { CrudToolbar } from './crud-toolbar';
 import type { Document } from 'hadron-document';
@@ -399,11 +407,17 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
     enableImportExport: isImportExportEnabled,
   } = usePreferences(['readOnly', 'readWrite', 'enableImportExport']);
 
-  const isEditable =
+  const canEdit =
     !preferencesReadOnly &&
     !store.state.isDataLake &&
     !store.state.isReadonly &&
     Object.keys(query.project ?? {}).length === 0;
+
+  // Fork extra feature: editing is opt-in per tab (toolbar toggle), so a
+  // double-click on a field never starts an edit by accident.
+  const [editMode, setEditMode] = useState(false);
+  const toggleEditMode = useCallback(() => setEditMode((v) => !v), []);
+  const isEditable = canEdit && editMode;
 
   const isEmpty = docs.length === 0;
 
@@ -517,17 +531,20 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
           }
         } else {
           content = (
-            <DocumentViewComponent
-              {...props}
-              isEditable={isEditable}
-              outdated={outdated}
-              query={query}
-              initialScrollTop={currentViewInitialScrollTop}
-              scrollableContainerRef={scrollRef}
-              scrollTriggerRef={scrollTriggerRef}
-              columnWidths={columnWidths}
-              onColumnWidthChange={onColumnWidthChange}
-            />
+            <HighlighterFieldDecorations namespace={ns}>
+              <DocumentListComponents.DecoratedDocumentHeader />
+              <DocumentViewComponent
+                {...props}
+                isEditable={isEditable}
+                outdated={outdated}
+                query={query}
+                initialScrollTop={currentViewInitialScrollTop}
+                scrollableContainerRef={scrollRef}
+                scrollTriggerRef={scrollTriggerRef}
+                columnWidths={columnWidths}
+                onColumnWidthChange={onColumnWidthChange}
+              />
+            </HighlighterFieldDecorations>
           );
         }
       }
@@ -602,7 +619,9 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
               store
             )}
             outdated={outdated}
-            readonly={!isEditable}
+            readonly={!canEdit}
+            editMode={canEdit ? editMode : undefined}
+            onToggleEditMode={canEdit ? toggleEditMode : undefined}
             viewSwitchHandler={handleViewChanged}
             isWritable={isWritable}
             instanceDescription={instanceDescription}

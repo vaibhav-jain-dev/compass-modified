@@ -11,7 +11,9 @@ import {
   useDarkMode,
   Body,
   nbsp,
+  Icon,
 } from '@mongodb-js/compass-components';
+import { useItemDecoration } from './item-decorations';
 import { type Actions, ROW_HEIGHT } from './constants';
 import { ExpandButton } from './tree-item';
 import { type NavigationItemActions } from './item-actions';
@@ -90,6 +92,83 @@ const labelAndIconWrapperStyles = css({
   },
   fontSize: '12px',
 });
+
+const dimmedItemStyles = css({
+  opacity: 0.45,
+});
+
+const decorationMarkerStyles = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  flexShrink: 0,
+  width: spacing[200],
+  height: spacing[200],
+  borderRadius: '50%',
+});
+
+const decorationIconStyles = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  flexShrink: 0,
+});
+
+const tagListStyles = css({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: spacing[100],
+});
+
+const tagChipStyles = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: spacing[100],
+  padding: `0 ${spacing[150]}px`,
+  borderRadius: spacing[100],
+  fontSize: '12px',
+  lineHeight: '20px',
+  width: 'fit-content',
+});
+
+const DecorationTags: React.FunctionComponent<{
+  tags: NonNullable<ReturnType<typeof useItemDecoration>>['tags'];
+}> = ({ tags }) => {
+  const isDarkMode = useDarkMode();
+  if (!tags?.length) {
+    return null;
+  }
+  return (
+    <Tooltip
+      darkMode={isDarkMode}
+      trigger={({
+        children: tooltipChildren,
+        ...tooltipTriggerProps
+      }: React.HTMLProps<HTMLSpanElement>) => (
+        <span
+          {...tooltipTriggerProps}
+          className={decorationIconStyles}
+          style={{ color: tags[0].color }}
+          data-testid="navigation-item-tags"
+        >
+          <Icon glyph="InfoWithCircle" size="small" />
+          {tooltipChildren}
+        </span>
+      )}
+    >
+      <div className={tagListStyles}>
+        {tags.map((tag) => (
+          <span
+            key={tag.name}
+            className={tagChipStyles}
+            style={{ color: tag.color, backgroundColor: tag.background }}
+          >
+            {tag.name}
+            {tag.description ? `: ${tag.description}` : ''}
+          </span>
+        ))}
+      </div>
+    </Tooltip>
+  );
+};
 
 const actionControlsWrapperStyles = css({
   display: 'flex',
@@ -179,13 +258,16 @@ export const NavigationBaseItem = React.forwardRef<
   ref
 ) {
   const [hoverProps, isHovered] = useHoverState();
+  const decoration = useItemDecoration(item);
 
   return (
     <div
       ref={ref}
       data-testid="base-navigation-item"
+      data-highlighter-dimmed={decoration?.dimmed ? 'true' : undefined}
       className={cx(itemContainerStyles, {
         [itemContainerWithActionStyles]: hasDefaultAction,
+        [dimmedItemStyles]: !!decoration?.dimmed,
       })}
       {...hoverProps}
       {...dataAttributes}
@@ -205,6 +287,26 @@ export const NavigationBaseItem = React.forwardRef<
         <div className={labelAndIconWrapperStyles}>
           {icon}
           <span title={name}>{nbsp(name)}</span>
+          {decoration?.icon ? (
+            <span
+              className={decorationIconStyles}
+              style={{ color: decoration.color }}
+              title={decoration.label}
+              data-testid="navigation-item-highlight"
+            >
+              <Icon glyph={decoration.icon} size="small" />
+            </span>
+          ) : decoration?.color ? (
+            <span
+              className={decorationMarkerStyles}
+              style={{ backgroundColor: decoration.color }}
+              title={decoration.label}
+              data-testid="navigation-item-highlight"
+            />
+          ) : null}
+          {decoration?.tags?.length ? (
+            <DecorationTags tags={decoration.tags} />
+          ) : null}
         </div>
         {item.type === 'connection' && (
           <ClusterStateBadgeWithTooltip item={item} />

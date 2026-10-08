@@ -12,6 +12,7 @@ import {
   useWorkspacePlugins,
 } from '@mongodb-js/compass-workspaces/provider';
 import { usePreference } from 'compass-preferences-model/provider';
+import { useHighlighterEnabled } from '@mongodb-js/compass-highlighter';
 import React from 'react';
 
 const navigationItem = css({
@@ -99,9 +100,13 @@ export function Navigation({
   currentLocation: string | null;
 }): React.ReactElement {
   const { hasWorkspacePlugin } = useWorkspacePlugins();
-  const { openMyQueriesWorkspace, openDataModelingWorkspace } =
-    useOpenWorkspace();
+  const {
+    openMyQueriesWorkspace,
+    openDataModelingWorkspace,
+    openHighlighterWorkspace,
+  } = useOpenWorkspace();
   const isMyQueriesEnabled = usePreference('enableMyQueries');
+  const isHighlighterEnabled = useHighlighterEnabled();
   return (
     <div>
       {hasWorkspacePlugin('My Queries') && isMyQueriesEnabled && (
@@ -118,6 +123,14 @@ export function Navigation({
         label="Data Modeling"
         isActive={currentLocation === 'Data Modeling'}
       />
+      {hasWorkspacePlugin('Highlighter') && isHighlighterEnabled && (
+        <NavigationItem
+          onClick={openHighlighterWorkspace}
+          glyph="Bulb"
+          label="Highlighter"
+          isActive={currentLocation === 'Highlighter'}
+        />
+      )}
     </div>
   );
 }

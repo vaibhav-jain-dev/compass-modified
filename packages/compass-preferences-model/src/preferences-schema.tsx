@@ -78,6 +78,8 @@ export type UserConfigurablePreferences = PermanentFeatureFlags &
     enableAtlasSearchIndexes: boolean;
     enableImportExport: boolean;
     enableMyQueries: boolean;
+    // Fork extra feature, see extra-features/highlighter.md
+    highlighterConfigPath?: string;
     enableAggregationBuilderRunPipeline: boolean;
     enableAggregationBuilderExtraOptions: boolean;
     enableGenAISampleDocumentPassing: boolean;
@@ -1212,6 +1214,18 @@ export const storedUserPreferencesProps: Required<{
     },
     validator: z.boolean().default(true),
     type: 'boolean',
+  },
+  highlighterConfigPath: {
+    ui: true,
+    exposedInSettingsUI: ['desktop'],
+    cli: true,
+    global: true,
+    description: {
+      short: 'Highlighter config file path',
+      long: 'Path to the highlighter.yaml file that defines feature labels, highlighted collections, fields and notes. Leave empty to use ~/compass-highlighter/highlighter.yaml.',
+    },
+    validator: z.string().optional(),
+    type: 'string',
   },
 
   inferNamespacesFromPrivileges: {

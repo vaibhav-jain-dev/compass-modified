@@ -9,6 +9,15 @@ export {
   type DraggedDocumentField,
 } from './field-drag';
 export {
+  FieldDecorationsProvider,
+  useFieldDecoration,
+  useCollectionDecoration,
+  type FieldDecoration,
+  type CollectionDecoration,
+  type FieldDecorationsContextValue,
+} from './field-decorations-context';
+export { DecoratedDocumentHeader } from './decorated-document-header';
+export {
   BSONDisplayOptionsProvider,
   useBSONDisplayOptions,
   type BSONDisplayOptions,

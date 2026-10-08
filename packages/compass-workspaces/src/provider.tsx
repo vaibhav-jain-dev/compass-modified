@@ -49,6 +49,11 @@ export type WorkspacesService = {
   openDataModelingWorkspace(this: void, options?: TabOptions): void;
 
   /**
+   * Open "Highlighter" workspace (fork extra feature)
+   */
+  openHighlighterWorkspace(this: void, tabOptions?: TabOptions): void;
+
+  /**
    * Open "Shell" workspace
    */
   openShellWorkspace(
@@ -211,6 +216,7 @@ const noopWorkspacesService = {
   },
   openMyQueriesWorkspace: throwIfNotTestEnv,
   openDataModelingWorkspace: throwIfNotTestEnv,
+  openHighlighterWorkspace: throwIfNotTestEnv,
   openShellWorkspace: throwIfNotTestEnv,
   openDatabasesWorkspace: throwIfNotTestEnv,
   openPerformanceWorkspace: throwIfNotTestEnv,
@@ -260,6 +266,11 @@ export const WorkspacesServiceProvider: React.FunctionComponent<{
               newTab: options.newTab ?? true,
             }
           )
+        );
+      },
+      openHighlighterWorkspace: (tabOptions) => {
+        return void store.dispatch(
+          openWorkspaceAction({ type: 'Highlighter' }, tabOptions)
         );
       },
       openShellWorkspace(connectionId, options = {}) {
@@ -353,6 +364,7 @@ export function useOpenWorkspace() {
     openDatabasesWorkspace,
     openMyQueriesWorkspace,
     openDataModelingWorkspace,
+    openHighlighterWorkspace,
     openPerformanceWorkspace,
     openEditViewWorkspace,
   } = useWorkspacesService();
@@ -364,6 +376,7 @@ export function useOpenWorkspace() {
     openDatabasesWorkspace,
     openMyQueriesWorkspace,
     openDataModelingWorkspace,
+    openHighlighterWorkspace,
     openPerformanceWorkspace,
     openEditViewWorkspace,
   });

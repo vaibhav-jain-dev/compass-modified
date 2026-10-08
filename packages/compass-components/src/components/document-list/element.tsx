@@ -19,7 +19,7 @@ import { useAutoFocusContext } from './auto-focus-context';
 import { useForceUpdate } from './use-force-update';
 import { css, cx } from '@leafygreen-ui/emotion';
 import { palette } from '@leafygreen-ui/palette';
-import { Icon } from '../leafygreen';
+import { Icon, Tooltip } from '../leafygreen';
 import { useDarkMode } from '../../hooks/use-theme';
 import VisibleFieldsToggle from './visible-field-toggle';
 import { hasDistinctValue } from 'mongodb-query-util';
@@ -27,6 +27,7 @@ import { useContextMenuGroups } from '../context-menu';
 import { useSyncStateOnPropChange } from '../../hooks/use-sync-state-on-prop-change';
 import { useBSONDisplayOptions } from './bson-display-options-context';
 import { setDraggedDocumentField } from './field-drag';
+import { useFieldDecoration } from './field-decorations-context';
 
 function useElementEditor(
   el: HadronElementType,
@@ -322,6 +323,56 @@ const elementKey = css({
   maxWidth: '60%',
 });
 
+const elementDecorationIcon = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  marginLeft: spacing[100],
+  verticalAlign: 'middle',
+  cursor: 'help',
+});
+
+const elementValueLinkable = css({
+  cursor: 'pointer',
+  display: 'inline-block',
+  padding: `0 ${spacing[100]}px`,
+  border: '1px solid currentColor',
+  borderRadius: spacing[100],
+  lineHeight: '18px',
+});
+
+const elementDecorationChip = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  marginLeft: spacing[100],
+  padding: `0 ${spacing[100]}px`,
+  borderRadius: spacing[100],
+  fontSize: '10px',
+  lineHeight: '16px',
+  fontWeight: 600,
+  letterSpacing: '0.02em',
+  textTransform: 'uppercase',
+  verticalAlign: 'middle',
+  whiteSpace: 'nowrap',
+});
+
+// A highlighted object/array: its children are framed so the "portion" of
+// the document reads as one labelled region. Regions nest naturally.
+const elementDecorationRegion = css({
+  borderLeft: '2px solid currentColor',
+  borderRadius: `0 0 0 ${spacing[100]}px`,
+  marginLeft: spacing[100],
+});
+
+const elementDecorationButton = css({
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  color: 'inherit',
+  cursor: 'pointer',
+});
+
 const elementKeyInline = css({
   // Inline-block to keep the key's own max width and ellipsis, aligned to the
   // bottom for the box's baseline.
@@ -466,6 +517,34 @@ const isValidUrl = (str: string): boolean => {
 };
 
 /**
+ * Full path of an element including array indexes, e.g.
+ * `sections.groups[0].lines[1].fields[0].variable_id`. Used to tell the
+ * user exactly where a link was followed from.
+ */
+export const getFullKeyPathForElement = (
+  element: HadronElementType
+): string => {
+  const parts: string[] = [];
+  let currentElement: HadronElementType | HadronDocumentType | null = element;
+  while (
+    currentElement &&
+    'parent' in currentElement &&
+    currentElement.parent
+  ) {
+    const key = currentElement.currentKey.toString();
+    parts.unshift(
+      currentElement.parent.currentType === 'Array' ? `[${key}]` : key
+    );
+    currentElement = currentElement.parent;
+  }
+  return parts.reduce(
+    (acc, part) =>
+      acc === '' || part.startsWith('[') ? `${acc}${part}` : `${acc}.${part}`,
+    ''
+  );
+};
+
+/**
  * Helper function to get the nested key path of an element, skips array keys
  * Meant for keypaths used in query conditions from a selected element
  */
@@ -530,6 +609,15 @@ export const HadronElement: React.FunctionComponent<{
     expand,
     collapse,
   } = useHadronElement(element);
+
+  // Fork extra feature (Highlighter): optional per-field styling provided by
+  // the host through FieldDecorationsProvider.
+  const decoration = useFieldDecoration(
+    getNestedKeyPathForElement(element),
+    () => element.generateObject(),
+    String(element.currentKey),
+    getFullKeyPathForElement(element)
+  );
 
   // Function to check if a field is in the query
   // TODO: COMPASS-9541 Improve the functionality when checking for nested objects.
@@ -680,6 +768,9 @@ export const HadronElement: React.FunctionComponent<{
         (darkMode ? elementModifiedDarkMode : elementModifiedLightMode),
       removed ? elementRemoved : editingEnabled && !isValid && elementInvalid
     ),
+    style: decoration?.background
+      ? { backgroundColor: decoration.background }
+      : undefined,
     onClick: toggleExpanded,
   };
 
@@ -695,6 +786,13 @@ export const HadronElement: React.FunctionComponent<{
       darkMode && elementKeyDarkMode,
       keyDraggable && elementKeyDraggable
     ),
+    style: decoration
+      ? {
+          color: decoration.color,
+          fontWeight: decoration.bold ? 700 : undefined,
+          textDecoration: decoration.strikethrough ? 'line-through' : undefined,
+        }
+      : undefined,
   };
 
   const lineNumberRemoved = darkMode
@@ -828,6 +926,86 @@ export const HadronElement: React.FunctionComponent<{
             ) : (
               <span>{key.value}</span>
             )}
+            {decoration?.chip && (
+              <span
+                className={elementDecorationChip}
+                style={{
+                  color: decoration.color,
+                  backgroundColor: decoration.background,
+                  border: `1px solid ${decoration.color ?? 'currentColor'}`,
+                }}
+                data-testid="hadron-document-element-chip"
+              >
+                {decoration.chip}
+              </span>
+            )}
+            {decoration && (
+              <span
+                className={elementDecorationIcon}
+                style={{ color: decoration.color }}
+                data-testid="hadron-document-element-highlight"
+              >
+                {decoration.tooltip ? (
+                  <Tooltip
+                    trigger={({
+                      children,
+                      ...triggerProps
+                    }: React.HTMLProps<HTMLSpanElement>) =>
+                      decoration.onClick ? (
+                        <button
+                          type="button"
+                          className={elementDecorationButton}
+                          aria-label={decoration.label}
+                          onClick={(evt) => {
+                            evt.stopPropagation();
+                            decoration.onClick?.();
+                          }}
+                          {...(triggerProps as Omit<
+                            React.HTMLProps<HTMLButtonElement>,
+                            'type' | 'ref'
+                          >)}
+                        >
+                          <Icon
+                            glyph={decoration.icon ?? 'Bulb'}
+                            size="small"
+                          />
+                          {children}
+                        </button>
+                      ) : (
+                        <span {...triggerProps} aria-label={decoration.label}>
+                          <Icon
+                            glyph={decoration.icon ?? 'Bulb'}
+                            size="small"
+                          />
+                          {children}
+                        </span>
+                      )
+                    }
+                  >
+                    {decoration.tooltip}
+                  </Tooltip>
+                ) : decoration.onClick ? (
+                  <button
+                    type="button"
+                    className={elementDecorationButton}
+                    aria-label={decoration.label}
+                    title={decoration.label}
+                    onClick={(evt) => {
+                      evt.stopPropagation();
+                      decoration.onClick?.();
+                    }}
+                  >
+                    <Icon glyph={decoration.icon ?? 'Bulb'} size="small" />
+                  </button>
+                ) : (
+                  <Icon
+                    glyph={decoration.icon ?? 'Bulb'}
+                    size="small"
+                    title={decoration.label}
+                  />
+                )}
+              </span>
+            )}
           </div>
           <div className={elementDivider} role="presentation">
             :&nbsp;
@@ -862,6 +1040,8 @@ export const HadronElement: React.FunctionComponent<{
                 onEditStart={() => {
                   onEditStart?.(element.uuid, 'value');
                 }}
+                onLinkOpen={decoration?.onClick}
+                linkClassName={elementValueLinkable}
                 onFocus={() => {
                   value.startEdit();
                 }}
@@ -876,11 +1056,27 @@ export const HadronElement: React.FunctionComponent<{
                     ? 'hadron-document-clickable-value'
                     : undefined
                 }
-                onDoubleClick={() => {
+                onDoubleClick={(evt) => {
+                  // Ctrl/Cmd + double-click follows the field's link (fork
+                  // feature); a plain double-click keeps the upstream edit
+                  // behaviour.
+                  if ((evt.ctrlKey || evt.metaKey) && decoration?.onClick) {
+                    evt.preventDefault();
+                    decoration.onClick();
+                    return;
+                  }
                   if (editable && !editingEnabled) {
                     onEditStart?.(element.uuid, 'type');
                   }
                 }}
+                className={
+                  decoration?.onClick ? elementValueLinkable : undefined
+                }
+                title={
+                  decoration?.onClick
+                    ? 'Ctrl + double-click to open related documents'
+                    : undefined
+                }
               >
                 <BSONValue
                   type={type.value}
@@ -915,7 +1111,20 @@ export const HadronElement: React.FunctionComponent<{
         )}
       </div>
       {expandable && expanded && (
-        <>
+        <div
+          className={decoration ? elementDecorationRegion : undefined}
+          style={
+            decoration
+              ? {
+                  color: decoration.color,
+                  backgroundColor: decoration.background,
+                }
+              : undefined
+          }
+          data-testid={
+            decoration ? 'hadron-document-element-region' : undefined
+          }
+        >
           {visibleChildren.map((el: HadronElementType, idx: React.Key) => {
             return (
               <HadronElement
@@ -949,7 +1158,7 @@ export const HadronElement: React.FunctionComponent<{
             onSizeChange={handleVisibleElementsChanged}
             style={nestedElementsVisibilityToggleOffsetStyle}
           ></VisibleFieldsToggle>
-        </>
+        </div>
       )}
     </>
   );

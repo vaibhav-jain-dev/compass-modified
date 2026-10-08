@@ -33,6 +33,13 @@ export type DataModelingWorkspace = z.output<
   typeof DataModelingWorkspaceSchema
 >;
 
+// Fork extra feature, see extra-features/highlighter.md
+const HighlighterWorkspaceSchema = z.object({
+  type: z.literal('Highlighter'),
+});
+
+export type HighlighterWorkspace = z.output<typeof HighlighterWorkspaceSchema>;
+
 const DatabasesWorkspaceSchema = z.object({
   type: z.literal('Databases'),
   connectionId: z.string(),
@@ -92,6 +99,7 @@ const WorkspaceTabPropsSchema = z.discriminatedUnion('type', [
   WelcomeWorkspaceSchema,
   MyQueriesWorkspaceSchema,
   DataModelingWorkspaceSchema,
+  HighlighterWorkspaceSchema,
   DatabasesWorkspaceSchema,
   ServerStatsWorkspaceSchema,
   ShellWorkspaceSchema,
@@ -121,6 +129,7 @@ export type AnyWorkspace =
   | WelcomeWorkspace
   | MyQueriesWorkspace
   | DataModelingWorkspace
+  | HighlighterWorkspace
   | ShellWorkspace
   | ServerStatsWorkspace
   | DatabasesWorkspace

@@ -22,7 +22,16 @@ import {
   Placeholder,
   useContextMenuGroups,
 } from '@mongodb-js/compass-components';
-import { ConnectionsNavigationTree } from '@mongodb-js/compass-connections-navigation';
+import {
+  ConnectionsNavigationTree,
+  ItemDecorationsProvider,
+} from '@mongodb-js/compass-connections-navigation';
+import type { ItemDecorationsContextValue } from '@mongodb-js/compass-connections-navigation';
+import {
+  useHighlighterListing,
+  filterConnectionsForHighlighter,
+  HighlighterListingToggle,
+} from '@mongodb-js/compass-highlighter';
 import type { MapDispatchToProps, MapStateToProps } from 'react-redux';
 import type {
   Actions,
@@ -107,6 +116,14 @@ const noDeploymentStyles = css({
   display: 'flex',
   flexDirection: 'column',
   gap: spacing[200],
+});
+
+const filterRowStyles = css({
+  display: 'flex',
+  alignItems: 'center',
+  gap: spacing[100],
+  // the search box keeps its full width, the toggle takes what it needs
+  '& > :first-child': { flex: 1, minWidth: 0 },
 });
 
 const noSearchResultsStyles = css({
@@ -290,6 +307,36 @@ const ConnectionsNavigation: React.FC<ConnectionsNavigationProps> = ({
     fetchAllCollections,
     onDatabaseExpand,
   });
+
+  const highlighterListing = useHighlighterListing();
+  const visibleConnections = useMemo(
+    () =>
+      filterConnectionsForHighlighter(
+        filtered || connections,
+        highlighterListing
+      ),
+    [filtered, connections, highlighterListing]
+  );
+  const itemDecorations = useMemo((): ItemDecorationsContextValue | null => {
+    if (!highlighterListing.feature) {
+      return null;
+    }
+    return {
+      getItemDecoration(item) {
+        if (item.type === 'database') {
+          return highlighterListing.getDatabaseDecoration(item.dbName);
+        }
+        if (
+          item.type === 'collection' ||
+          item.type === 'view' ||
+          item.type === 'timeseries'
+        ) {
+          return highlighterListing.getCollectionDecoration(item.namespace);
+        }
+        return undefined;
+      },
+    };
+  }, [highlighterListing]);
 
   const connectionListTitleActions =
     useMemo((): ItemAction<ConnectionListTitleActions>[] => {
@@ -610,14 +657,17 @@ const ConnectionsNavigation: React.FC<ConnectionsNavigationProps> = ({
           collapseAfter={2}
         ></ItemActionControls>
       </div>
-      <NavigationItemsFilter
-        placeholder={
-          isAtlasConnectionStorage ? 'Search clusters' : 'Search connections'
-        }
-        filter={filter}
-        onFilterChange={onFilterChange}
-        disabled={isInitialConnectionsLoad || connections.length === 0}
-      />
+      <div className={filterRowStyles}>
+        <NavigationItemsFilter
+          placeholder={
+            isAtlasConnectionStorage ? 'Search clusters' : 'Search connections'
+          }
+          filter={filter}
+          onFilterChange={onFilterChange}
+          disabled={isInitialConnectionsLoad || connections.length === 0}
+        />
+        <HighlighterListingToggle />
+      </div>
       {isInitialConnectionsLoad ? (
         <ConnectionsPlaceholder></ConnectionsPlaceholder>
       ) : connections.length > 0 ? (
@@ -629,13 +679,15 @@ const ConnectionsNavigation: React.FC<ConnectionsNavigationProps> = ({
             <Body>No results found.</Body>
           </div>
         ) : (
-          <ConnectionsNavigationTree
-            connections={filtered || connections}
-            activeWorkspace={activeWorkspace}
-            onItemAction={onItemAction}
-            onItemExpand={onItemExpand}
-            expanded={expanded}
-          />
+          <ItemDecorationsProvider value={itemDecorations}>
+            <ConnectionsNavigationTree
+              connections={visibleConnections}
+              activeWorkspace={activeWorkspace}
+              onItemAction={onItemAction}
+              onItemExpand={onItemExpand}
+              expanded={expanded}
+            />
+          </ItemDecorationsProvider>
         )
       ) : connections.length === 0 ? (
         <div className={noDeploymentStyles}>

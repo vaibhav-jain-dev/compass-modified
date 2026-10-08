@@ -15,6 +15,7 @@ import OIDCSettings, { oidcFields } from './settings/oidc-settings';
 import GenAISettings, { genaiFields } from './settings/gen-ai-settings';
 import PrivacySettings, { privacyFields } from './settings/privacy';
 import ThemeSettings, { themeFields } from './settings/theme';
+import HighlighterSettings, { highlighterFields } from './settings/highlighter';
 import FeaturePreviewSettings, {
   useShouldShowFeaturePreviewSettings,
   previewFeatureFlagFields,
@@ -124,6 +125,12 @@ export const SettingsModal: React.FunctionComponent<SettingsModalProps> = ({
         preferences: genaiFields,
         name: 'Artificial Intelligence',
         component: GenAISettings,
+      },
+      {
+        tabId: 'highlighter' as SettingsTabId,
+        preferences: highlighterFields,
+        name: 'Highlighter',
+        component: HighlighterSettings,
       },
       ...(hasFeaturePreviewSettings
         ? [

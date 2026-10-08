@@ -15,3 +15,9 @@ export {
   ConnectionsNavigationTree,
   type ConnectionsNavigationTreeProps,
 } from './connections-navigation-tree';
+export {
+  ItemDecorationsProvider,
+  type ItemDecoration,
+  type ItemDecorationTag,
+  type ItemDecorationsContextValue,
+} from './item-decorations';

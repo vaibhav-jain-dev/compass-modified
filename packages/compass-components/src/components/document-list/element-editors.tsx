@@ -136,6 +136,13 @@ export const KeyEditor: React.FunctionComponent<{
 export const ValueEditor: React.FunctionComponent<{
   editing?: boolean;
   onEditStart(): void;
+  /**
+   * Fork extra feature (Highlighter): when set, Ctrl/Cmd + double-click
+   * follows the field's link instead of starting an edit, and the value is
+   * styled as a clickable id.
+   */
+  onLinkOpen?: () => void;
+  linkClassName?: string;
   type: keyof TypeCastMap;
   value: string;
   valid: boolean;
@@ -148,6 +155,8 @@ export const ValueEditor: React.FunctionComponent<{
 }> = ({
   editing,
   onEditStart,
+  onLinkOpen,
+  linkClassName,
   type,
   value,
   valid,
@@ -164,7 +173,20 @@ export const ValueEditor: React.FunctionComponent<{
     return (
       <span
         data-testid="hadron-document-clickable-value"
-        onDoubleClick={onEditStart}
+        className={onLinkOpen ? linkClassName : undefined}
+        title={
+          onLinkOpen
+            ? 'Ctrl + double-click to open related documents'
+            : undefined
+        }
+        onDoubleClick={(evt) => {
+          if ((evt.ctrlKey || evt.metaKey) && onLinkOpen) {
+            evt.preventDefault();
+            onLinkOpen();
+            return;
+          }
+          onEditStart();
+        }}
       >
         <BSONValue type={type} value={originalValue}></BSONValue>
       </span>

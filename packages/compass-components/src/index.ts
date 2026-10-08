@@ -187,6 +187,10 @@ export * from './hooks/use-formatted-date';
 export { fontFamilies } from '@leafygreen-ui/tokens';
 export { default as BSONValue } from './components/bson-value';
 export * as DocumentList from './components/document-list';
+export type {
+  FieldDecoration,
+  CollectionDecoration as DocumentCollectionDecoration,
+} from './components/document-list/field-decorations-context';
 export { KeylineCard } from './components/keyline-card';
 export { variantColors as codePalette } from '@leafygreen-ui/code';
 export { useEffectOnChange } from './hooks/use-effect-on-change';

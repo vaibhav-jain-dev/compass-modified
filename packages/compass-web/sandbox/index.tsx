@@ -9,6 +9,10 @@ import {
 import type * as CompassWebModule from '../src';
 import { OpenInAtlasToast } from './open-in-atlas-toast';
 import { createHashHistory } from 'history';
+// Subpath import on purpose: the main entry would pull the whole plugin
+// (and the driver) into the sandbox bundle, which has no Node polyfills.
+import { HttpConfigBackend } from '@mongodb-js/compass-highlighter/http-backend';
+import type { ConnectionInfo } from '@mongodb-js/connection-info';
 
 const hashHistory = createHashHistory();
 
@@ -25,7 +29,25 @@ Object.assign(globalThis, {
   __compassWebEnableSandboxPreferencesOverride: true,
   // For testing purposes to programmatically trigger navigation
   hashHistory,
+  // Fork-specific: the dev server picks the ws proxy port at start-up (see
+  // webpack.config.js) and injects it here for sandbox-multiplex-link.ts
+  __compassWebSandboxWsUrl: process.env.COMPASS_WEB_WS_URL,
 });
+
+// Fork extra feature: highlighter config is served by the dev server from the
+// user's home directory, see webpack.config.js
+const highlighterBackend = new HttpConfigBackend('/highlighter/config');
+
+// Provided by sandbox-autoconnect.ts, which is bundled with the library
+const resolveDefaultConnection = (connections: ConnectionInfo[]) => {
+  const resolver = (
+    globalThis as unknown as Record<
+      symbol,
+      ((c: ConnectionInfo[]) => Promise<ConnectionInfo | undefined>) | undefined
+    >
+  )[Symbol.for('@compass-web-sandbox-default-connection')];
+  return resolver ? resolver(connections) : Promise.resolve(undefined);
+};
 
 const sandboxContainerStyles = css({
   width: '100%',
@@ -62,7 +84,13 @@ const App = () => {
   return (
     <CompassComponentsProvider>
       <Body as="div" className={sandboxContainerStyles}>
-        <CompassWeb orgId="" projectId="" history={hashHistory}></CompassWeb>
+        <CompassWeb
+          orgId=""
+          projectId=""
+          history={hashHistory}
+          highlighterBackend={highlighterBackend}
+          onDefaultConnectionRequest={resolveDefaultConnection}
+        ></CompassWeb>
         <OpenInAtlasToast></OpenInAtlasToast>
       </Body>
     </CompassComponentsProvider>

@@ -3,7 +3,10 @@ import AppRegistry, {
   AppRegistryProvider,
   GlobalAppRegistryProvider,
 } from '@mongodb-js/compass-app-registry';
-import type { AtlasClusterMetadata } from '@mongodb-js/connection-info';
+import type {
+  AtlasClusterMetadata,
+  ConnectionInfo,
+} from '@mongodb-js/connection-info';
 import { useConnectionActions } from '@mongodb-js/compass-connections/provider';
 import { CompassInstanceStorePlugin } from '@mongodb-js/compass-app-stores';
 import WorkspacesPlugin, {
@@ -80,6 +83,11 @@ import type {
 import { useCompassWebLoggerAndTelemetry } from './logger-and-telemetry';
 import { WebWorkspaceTab as WelcomeWorkspaceTab } from '@mongodb-js/compass-welcome';
 import { WorkspaceTab as MyQueriesWorkspace } from '@mongodb-js/compass-saved-aggregations-queries';
+import {
+  HighlighterPlugin,
+  WorkspaceTab as HighlighterWorkspace,
+} from '@mongodb-js/compass-highlighter';
+import type { ConfigBackend as HighlighterConfigBackend } from '@mongodb-js/compass-highlighter';
 import {
   useCompassWebPreferences,
   getAtlasServiceBackendPreset,
@@ -306,6 +314,23 @@ export type CompassWebProps = {
    * (default: "explorer")
    */
   historyRoutePrefix?: string;
+
+  /**
+   * Fork extra feature (see extra-features/highlighter.md). Source of the
+   * highlighter YAML config. When omitted the feature is disabled, which is
+   * the case when compass-web is embedded in Atlas.
+   */
+  highlighterBackend?: HighlighterConfigBackend;
+
+  /**
+   * Fork-specific. Called on start-up when the URL does not name a connection
+   * to auto-connect to. Receives the saved connections and may return one to
+   * connect to (e.g. the last used one, or a local MongoDB). Used by the
+   * sandbox; Atlas never passes it.
+   */
+  onDefaultConnectionRequest?: (
+    connections: ConnectionInfo[]
+  ) => Promise<ConnectionInfo | undefined>;
 };
 
 function CompassWorkspace({
@@ -323,6 +348,7 @@ function CompassWorkspace({
         CollectionWorkspace,
         DataModelingWorkspace,
         MyQueriesWorkspace,
+        HighlighterWorkspace,
       ]}
     >
       <CollectionTabsProvider
@@ -549,6 +575,8 @@ const CompassWebWithPreferences = ({
   onOpenConnectViaModal,
   history,
   historyRoutePrefix,
+  highlighterBackend,
+  onDefaultConnectionRequest,
 }: CompassWebProps) => {
   const appRegistry = useInitialValue(new AppRegistry());
   const preferences = usePreferencesContext();
@@ -600,47 +628,59 @@ const CompassWebWithPreferences = ({
                                 ]);
                               }}
                               onAutoconnectInfoRequest={(connectionStore) => {
-                                if (autoconnectId) {
-                                  return connectionStore.loadAll().then(
-                                    (connections) => {
+                                if (
+                                  !autoconnectId &&
+                                  !onDefaultConnectionRequest
+                                ) {
+                                  return Promise.resolve(undefined);
+                                }
+                                return connectionStore.loadAll().then(
+                                  (connections) => {
+                                    if (autoconnectId) {
                                       return connections.find(
                                         (connectionInfo) =>
                                           connectionInfo.id === autoconnectId
                                       );
-                                    },
-                                    (err) => {
-                                      const { log, mongoLogId } = logger;
-                                      log.warn(
-                                        mongoLogId(1_001_000_329),
-                                        'Compass Web',
-                                        'Could not load connections when trying to autoconnect',
-                                        { err: err.message }
-                                      );
-                                      return undefined;
                                     }
-                                  );
-                                }
-                                return Promise.resolve(undefined);
+                                    return onDefaultConnectionRequest?.(
+                                      connections
+                                    );
+                                  },
+                                  (err) => {
+                                    const { log, mongoLogId } = logger;
+                                    log.warn(
+                                      mongoLogId(1_001_000_329),
+                                      'Compass Web',
+                                      'Could not load connections when trying to autoconnect',
+                                      { err: err.message }
+                                    );
+                                    return undefined;
+                                  }
+                                );
                               }}
                             >
                               <CompassInstanceStorePlugin>
                                 <FieldStorePlugin>
-                                  <WithConnectionsStore>
-                                    <CompassWorkspace
-                                      initialWorkspaceTabs={
-                                        initialWorkspaceTabs
-                                      }
-                                      onActiveWorkspaceTabChange={
-                                        onActiveWorkspaceTabChange
-                                      }
-                                      onOpenConnectViaModal={
-                                        onOpenConnectViaModal
-                                      }
-                                      onBeforeUnloadCallbackRequest={
-                                        onBeforeUnloadCallbackRequest
-                                      }
-                                    ></CompassWorkspace>
-                                  </WithConnectionsStore>
+                                  <HighlighterPlugin
+                                    backend={highlighterBackend}
+                                  >
+                                    <WithConnectionsStore>
+                                      <CompassWorkspace
+                                        initialWorkspaceTabs={
+                                          initialWorkspaceTabs
+                                        }
+                                        onActiveWorkspaceTabChange={
+                                          onActiveWorkspaceTabChange
+                                        }
+                                        onOpenConnectViaModal={
+                                          onOpenConnectViaModal
+                                        }
+                                        onBeforeUnloadCallbackRequest={
+                                          onBeforeUnloadCallbackRequest
+                                        }
+                                      ></CompassWorkspace>
+                                    </WithConnectionsStore>
+                                  </HighlighterPlugin>
                                 </FieldStorePlugin>
                                 <CompassGenerativeAIPlugin
                                   projectId={projectId}
