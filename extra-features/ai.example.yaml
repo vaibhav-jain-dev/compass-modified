@@ -4,20 +4,28 @@
 # defaults as long as an Ollama server answers on localhost:11434.
 #
 # The model runs on your own GPU through Ollama (https://ollama.com). The
-# first request after a start loads the model into VRAM (a few seconds, a
-# toast says so); later requests are fast. Nothing leaves the machine.
+# first request loads the model into VRAM (a few seconds, a toast says so);
+# it is unloaded again `keepAlive` after the last request so the GPU is free
+# for everything else. Nothing leaves the machine.
+#
+# Defaults favour a low footprint (3B model, 2 minute keep-alive, no warm-up):
+# a query takes a few seconds longer than with a 7B model but the system stays
+# responsive. Raise `model`/`keepAlive` when you want faster answers.
 
 provider: ollama
 baseUrl: http://localhost:11434 # Ollama API; OLLAMA_HOST env overrides
-model: qwen2.5-coder:7b # see "Choosing a model" in extra-features/local-ai.md
+model: qwen2.5-coder:3b # see "Choosing a model" in extra-features/local-ai.md
 fallbackModels: # used when `model` is not installed, first installed wins
-  - llama3.1:8b
-  - qwen2.5:7b
+  - qwen2.5-coder:1.5b
+  - llama3.2:3b
+  - qwen2.5-coder:7b
 temperature: 0 # deterministic structured output
-numCtx: 8192 # context window; raise for very wide schemas
-keepAlive: 30m # how long Ollama keeps the model loaded after a request
-warmupOnStart: true # load the model when the sandbox starts, in the background
-timeoutMs: 60000
+numCtx: 8192 # context window the model is loaded with (KV cache costs VRAM)
+maxNumCtx: 16384 # a prompt that does not fit numCtx gets a window up to this size before any notes are dropped
+keepAlive: 2m # how long Ollama keeps the model loaded after a request
+warmupOnStart: false # true loads the model when the sandbox starts (uses VRAM while idle)
+# numGpu: 0 # uncomment to run on the CPU only (slower, leaves the GPU untouched)
+timeoutMs: 90000
 
 # What the prompt gets from the highlighter files for the collection being
 # queried. All on by default; turn off to debug prompt size issues.

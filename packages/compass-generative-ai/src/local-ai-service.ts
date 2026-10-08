@@ -119,7 +119,7 @@ export class LocalAiService extends AtlasAiService {
     if (!status.model) {
       throw new Error(
         `No usable model is installed. Run: ollama pull ${
-          status.requestedModel ?? 'qwen2.5-coder:7b'
+          status.requestedModel ?? 'qwen2.5-coder:3b'
         }`
       );
     }

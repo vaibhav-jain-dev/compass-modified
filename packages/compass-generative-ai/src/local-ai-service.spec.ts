@@ -71,7 +71,7 @@ describe('LocalAiService', function () {
 
   it('explains when no model is usable', async function () {
     respond(
-      { enabled: true, model: null, requestedModel: 'qwen2.5-coder:7b' },
+      { enabled: true, model: null, requestedModel: 'qwen2.5-coder:3b' },
       ''
     );
     let error: Error | null = null;
@@ -87,7 +87,7 @@ describe('LocalAiService', function () {
     } catch (err) {
       error = err as Error;
     }
-    expect(error?.message).to.match(/ollama pull qwen2.5-coder:7b/);
+    expect(error?.message).to.match(/ollama pull qwen2.5-coder:3b/);
   });
 
   it('surfaces a model error embedded in the stream', async function () {

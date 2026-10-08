@@ -37,10 +37,22 @@ class (planned).
 
 ### Latency, loading and the loader
 
-- **Lazy, then fast.** Ollama loads a model into VRAM on first use (a few seconds for a 7B
-  model at 4-bit) and keeps it for `keepAlive` (30 minutes by default). The sandbox warms the
-  model up in the background when it starts (`warmupOnStart`), so the first real query is
-  usually already fast.
+- **Lazy, low footprint.** Ollama loads the model into VRAM on first use (a couple of seconds
+  for the default 3B model) and unloads it `keepAlive` after the last request (2 minutes by
+  default), so the GPU is only busy while a query is being generated. `warmupOnStart: true`
+  loads the model when the sandbox starts instead; it makes the first query faster but keeps
+  VRAM occupied while idle, which on an 8 GB card shared with the Windows desktop makes the
+  whole machine sluggish. That is why it is off by default.
+- **CPU only.** `numGpu: 0` in `ai.yaml` runs the model without the GPU: slower, but the GPU
+  is never touched.
+- **Prompt budget.** Ollama silently drops the first half of a prompt that does not fit the
+  context window, which removes the instructions and makes the model answer in prose (the query
+  bar then stays empty with no error). The dev server estimates the prompt size per request: a
+  prompt wider than `numCtx` (8192) gets a larger window for that request, up to `maxNumCtx`
+  (16384); only past that are the highlighter notes trimmed (examples first, then relations,
+  then field meanings). Every adjustment is logged as `[local-ai] <namespace>: prompt is ~N
+tokens, ...` and the response carries `x-local-ai-prompt-tokens`. A collection with a very
+  wide schema (`loan_applications` is about 2.7k tokens with notes) is the usual trigger.
 - **Loader.** The query bar's AI input shows its animated loading state while a request runs
   (upstream behaviour). In addition, when the model is not yet loaded the fork shows a
   "Loading `<model>` on the GPU, the first query takes longer" toast that closes when the answer
@@ -52,18 +64,39 @@ class (planned).
 
 ### Choosing a model
 
-Fits an 8 GB card at 4-bit quantisation, best to worst for MongoDB query generation in our tests:
+All at 4-bit quantisation. The default is deliberately small: the GPU is shared with the
+Windows desktop and a resident 7B model (plus whatever else uses Ollama) left the machine
+stuttering even when no query was running. Latency of a few seconds is acceptable; a busy GPU
+is not.
 
-| Model              | Size   | Notes                                                             |
-| ------------------ | ------ | ----------------------------------------------------------------- |
-| `qwen2.5-coder:7b` | 4.7 GB | default; best at strict structured output and shell syntax        |
-| `llama3.1:8b`      | 4.9 GB | the Llama option; fine for simple filters, weaker on aggregations |
-| `qwen2.5:7b`       | 4.7 GB | general model, close to the coder on finds                        |
-| `llama3.2:3b`      | 2 GB   | fastest; use when VRAM is shared with other work                  |
+| Model                | VRAM   | Notes                                                       |
+| -------------------- | ------ | ----------------------------------------------------------- |
+| `qwen2.5-coder:3b`   | 2 GB   | default; good on finds and shell syntax, loads in about 2 s |
+| `qwen2.5-coder:1.5b` | 1 GB   | smallest usable; simple filters only                        |
+| `llama3.2:3b`        | 2 GB   | the Llama option at the same size                           |
+| `qwen2.5-coder:7b`   | 4.7 GB | best quality; only when nothing else needs the GPU          |
+| `llama3.1:8b`        | 4.9 GB | fine for simple filters, weaker on aggregations             |
+
+Measured on the `devlms` database through the real UI (nine prompts, basic to complex, with the
+highlighter notes in the prompt; "correct" means the filter does what was asked):
+
+| Model                | Correct filters | Warm latency | Notes                                                          |
+| -------------------- | --------------- | ------------ | -------------------------------------------------------------- |
+| `qwen2.5-coder:3b`   | 8 / 9           | 2.4 s        | chosen; uses note vocabulary (`instance_fields.0`, deep paths) |
+| `qwen2.5-coder:1.5b` | 7 / 9           | 2.1 s        | invents enum values, pads projections; not worth the saving    |
+| `qwen2.5-coder:7b`   | 9 / 9           | 2.6 s        | 4.7 GB resident; made the shared GPU sluggish                  |
+
+The shared miss is "more than 2 entries in an array" (the models write `$size: {$gt: 2}`, which
+MongoDB rejects; `"array.2": {$exists: true}` is the find-query form). Aggregation-style asks
+(group, count per key) are also beyond a find query; write those pipelines by hand or add a
+`shell:` query to the highlighter file. Small models copy `project`/`sort` from the example
+queries even when not asked; delete what you do not want before pressing Find.
 
 Install with `ollama pull <model>`. Larger models (14B) spill into system RAM on 8 GB and get
 slow; not recommended. Set `model` in `~/compass-highlighter/ai.yaml` or
-`COMPASS_LOCAL_AI_MODEL=... npm run start-web`.
+`COMPASS_LOCAL_AI_MODEL=... npm run start-web`. Check what is resident with
+`curl localhost:11434/api/ps` and free it at once with
+`curl localhost:11434/api/generate -d '{"model":"<name>","keep_alive":0}'`.
 
 ### What the highlighter adds to the prompt
 
@@ -92,10 +125,11 @@ improving the AI's answers is a YAML edit, not a prompt-engineering session.
 ## How to enable
 
 1. Install Ollama in WSL (`curl -fsSL https://ollama.com/install.sh | sh`) and pull a model:
-   `ollama pull qwen2.5-coder:7b`. Check `nvidia-smi` shows the GPU inside WSL.
+   `ollama pull qwen2.5-coder:3b`. Check `nvidia-smi` shows the GPU inside WSL.
 2. Optionally copy `extra-features/ai.example.yaml` to `~/compass-highlighter/ai.yaml` and edit.
-3. `npm run start-web`. The console prints `[local-ai] model qwen2.5-coder:7b ready` (or what is
-   missing). In the Documents tab, click "Generate query", type a sentence, press Enter.
+3. `npm run start-web`. In the Documents tab, click "Generate query", type a sentence, press
+   Enter. The first call loads the model (a toast says so); `GET /local-ai/status` shows what
+   is installed and loaded.
 
 ## How to use
 

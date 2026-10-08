@@ -77,11 +77,12 @@ and pull a model, then start the sandbox as usual:
 
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull qwen2.5-coder:7b     # ~4.7 GB, fits an 8 GB GPU
+ollama pull qwen2.5-coder:3b     # ~2 GB of VRAM; small on purpose, the GPU is shared with Windows
 ```
 
-The first query after a start loads the model onto the GPU (a toast says so); later ones take
-a few seconds. Optional settings go in `~/compass-highlighter/ai.yaml` (see
+The first query loads the model onto the GPU (a toast says so) and it is unloaded two minutes
+after the last one, so nothing stays resident while you are not generating queries. Optional
+settings (bigger model, longer keep-alive, CPU only) go in `~/compass-highlighter/ai.yaml` (see
 [`extra-features/ai.example.yaml`](extra-features/ai.example.yaml)); details and
 troubleshooting in [`extra-features/local-ai.md`](extra-features/local-ai.md).
 

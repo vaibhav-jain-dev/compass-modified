@@ -14,13 +14,22 @@ const DEFAULTS = {
       ? process.env.OLLAMA_HOST
       : `http://${process.env.OLLAMA_HOST}`
     : 'http://localhost:11434',
-  model: 'qwen2.5-coder:7b',
-  fallbackModels: ['llama3.1:8b', 'qwen2.5:7b', 'llama3.2:3b'],
+  // Low footprint by default: a 3B model, short keep-alive and no warm-up, so
+  // the GPU is only busy while a query is being generated. Bigger models are
+  // better but share 8 GB VRAM with the Windows desktop; see
+  // extra-features/local-ai.md "Choosing a model".
+  model: 'qwen2.5-coder:3b',
+  fallbackModels: ['qwen2.5-coder:1.5b', 'llama3.2:3b', 'qwen2.5-coder:7b'],
   temperature: 0,
   numCtx: 8192,
-  keepAlive: '30m',
-  warmupOnStart: true,
-  timeoutMs: 60000,
+  // A prompt (schema + notes) that does not fit numCtx first gets a larger
+  // window, up to this many tokens, and only then loses highlighter context.
+  maxNumCtx: 16384,
+  keepAlive: '2m',
+  warmupOnStart: false,
+  // Layers to run on the GPU; omit to let Ollama decide, 0 for CPU only.
+  numGpu: undefined,
+  timeoutMs: 90000,
   context: {
     collectionNotes: true,
     fieldMeanings: true,
@@ -316,6 +325,102 @@ function readBody(req) {
   });
 }
 
+const RESPONSE_TOKEN_RESERVE = 512;
+
+// Rough upper bound for English plus JSON-ish text with these tokenizers.
+function estimateTokens(text) {
+  return Math.ceil(text.length / 3);
+}
+
+function buildSystemPrompt(instructions, context) {
+  return [
+    instructions,
+    '- Output only the XML-delimited arguments, no explanation, no code fences.',
+    '- Use MongoDB shell syntax inside the delimiters (ObjectId("..."), ISODate("..."), regular expressions allowed).',
+    '- Fill project, sort, skip and limit only when the request asks for them (e.g. "only show X", "sorted by", "first 5" / "only 5" / "limit 5"); otherwise leave them empty ({} or 0).',
+    '- Never invent fields: use only field names from the schema or the notes.',
+    'Example when only a filter was asked. Request: documents whose status is active. Answer:',
+    "<filter>{ status: 'active' }</filter><project>{}</project><sort>{}</sort><skip>0</skip><limit>0</limit><aggregation>[]</aggregation>",
+    'Example when projection, sort and limit were asked. Request: the 5 newest orders, only show total. Answer:',
+    '<filter>{}</filter><project>{ total: 1 }</project><sort>{ createdAt: -1 }</sort><skip>0</skip><limit>5</limit><aggregation>[]</aggregation>',
+    context ? `\nContext from the team's notes:\n${context}` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * Ollama silently drops the first half of a prompt that does not fit num_ctx,
+ * which takes the instructions with it and the model answers in prose. So the
+ * prompt is measured first. The highlighter context is what makes a small
+ * model good, so the window is grown (up to maxNumCtx) before any of it is
+ * trimmed; trimming goes examples, relations, field meanings, everything.
+ * What remains over budget is reported, not hidden.
+ */
+function fitPrompt(config, instructions, prompt, namespace) {
+  const trims = [
+    { label: '', context: {} },
+    { label: 'example queries dropped', context: { exampleQueries: false } },
+    {
+      label: 'examples and relations dropped',
+      context: { exampleQueries: false, relations: false },
+    },
+    {
+      label: 'all highlighter context except collection notes dropped',
+      context: {
+        exampleQueries: false,
+        relations: false,
+        fieldMeanings: false,
+      },
+    },
+    { label: 'all highlighter context dropped', context: null },
+  ];
+  const windows = [config.numCtx];
+  while (windows[windows.length - 1] < config.maxNumCtx) {
+    windows.push(Math.min(config.maxNumCtx, windows[windows.length - 1] * 2));
+  }
+  const measure = (step) => {
+    const context =
+      namespace && step.context !== null
+        ? buildHighlighterContext(
+            { ...config, context: { ...config.context, ...step.context } },
+            namespace
+          )
+        : '';
+    const system = buildSystemPrompt(instructions, context);
+    return {
+      system,
+      promptTokens: estimateTokens(system) + estimateTokens(prompt),
+    };
+  };
+  const full = measure(trims[0]);
+  for (const numCtx of windows) {
+    if (full.promptTokens <= numCtx - RESPONSE_TOKEN_RESERVE) {
+      return {
+        ...full,
+        numCtx,
+        trimmed:
+          numCtx === config.numCtx ? '' : `context window raised to ${numCtx}`,
+      };
+    }
+  }
+  const numCtx = windows[windows.length - 1];
+  let last = full;
+  for (const step of trims.slice(1)) {
+    last = { ...measure(step), label: step.label };
+    if (last.promptTokens <= numCtx - RESPONSE_TOKEN_RESERVE) break;
+  }
+  const fits = last.promptTokens <= numCtx - RESPONSE_TOKEN_RESERVE;
+  return {
+    system: last.system,
+    promptTokens: last.promptTokens,
+    numCtx,
+    trimmed: `context window raised to ${numCtx} and ${last.label}${
+      fits ? '' : '; the prompt still does not fit, the answer may be wrong'
+    }`,
+  };
+}
+
 /**
  * Streams the model's answer as plain text. The client sends the exact
  * prompt and instructions upstream Compass would send to Atlas; the server
@@ -336,16 +441,17 @@ async function generate(config, req, res) {
     return;
   }
   state.lastModel = model;
-  const context = namespace ? buildHighlighterContext(config, namespace) : '';
-  const system = [
+  const { system, numCtx, promptTokens, trimmed } = fitPrompt(
+    config,
     instructions,
-    '- Output only the XML-delimited arguments, no explanation, no code fences.',
-    '- Use MongoDB shell syntax inside the delimiters (ObjectId("..."), ISODate("..."), regular expressions allowed).',
-    '- Leave an argument empty ({} or 0 or []) when it is not needed.',
-    context ? `\nContext from the team's notes:\n${context}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+    prompt,
+    namespace
+  );
+  if (trimmed) {
+    console.warn(
+      `[local-ai] ${namespace}: prompt is ~${promptTokens} tokens, ${trimmed}`
+    );
+  }
 
   const controller = new AbortController();
   req.on('close', () => controller.abort());
@@ -361,7 +467,11 @@ async function generate(config, req, res) {
         model,
         stream: true,
         keep_alive: config.keepAlive,
-        options: { temperature: config.temperature, num_ctx: config.numCtx },
+        options: {
+          temperature: config.temperature,
+          num_ctx: numCtx,
+          ...(config.numGpu === undefined ? {} : { num_gpu: config.numGpu }),
+        },
         messages: [
           { role: 'system', content: system },
           { role: 'user', content: prompt },
@@ -381,6 +491,7 @@ async function generate(config, req, res) {
   res.setHeader('content-type', 'text/plain; charset=utf-8');
   res.setHeader('cache-control', 'no-store');
   res.setHeader('x-local-ai-model', model);
+  res.setHeader('x-local-ai-prompt-tokens', String(promptTokens));
   res.flushHeaders?.();
   let buffer = '';
   try {
