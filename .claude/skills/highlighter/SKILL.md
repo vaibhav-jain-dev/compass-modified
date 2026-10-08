@@ -1,31 +1,36 @@
 ---
 name: highlighter
-description: Update the Compass fork's Highlighter config (highlighter.yaml) when the user says things like "update the highlighter", "highlight these fields for feature X", "add a note on <collection>.<field>", "mark <collection> as my focus", "only show these collections", or "attach this artifact/link to the feature". Also use when adding or changing Highlighter code in packages/compass-highlighter.
+description: Update the Compass fork's Highlighter files (highlighter.yaml, models/<database>.yaml, mappings/<database>.yaml) when the user says things like "update the highlighter", "highlight these fields for feature X", "add a note on <collection>.<field>", "mark <collection> as my focus", "only show these collections", "attach this artifact/link to the feature", "what does this field mean", "X points at Y / I should be able to jump from X to Y", or "tag these as ...". Also use when adding or changing Highlighter code in packages/compass-highlighter or explaining how the highlighter UI (panels, chips, toggles) works.
 ---
 
 # Highlighter skill
 
 Highlighter is a fork-only Compass feature. It highlights the collections, fields and
 cross-collection relations that matter for the feature the user is working on, grouped by a
-**feature label** the user picks from a dropdown in the Compass sidebar. Everything is driven by
-one YAML file that Compass reloads live, so your job is almost always a YAML edit.
+**feature label** the user picks from a dropdown in the Compass sidebar, and it lets the user
+jump from an id to the document it points at. Everything is driven by YAML files that Compass
+reloads live, so your job is almost always a YAML edit.
 
-Read first: `extra-features/highlighter.md` (behaviour) and
-`extra-features/highlighter.example.yaml` (the complete, commented schema).
+Read first: `extra-features/highlighter.md` (behaviour) and the three commented examples in
+`extra-features/`: `highlighter.example.yaml`, `highlighter.models.example.yaml`,
+`highlighter.mappings.example.yaml`.
 
-## 1. Find the config file (no questions, no manual steps)
+## 1. Find the files (no questions, no manual steps)
 
-The file is at a fixed, visible location. Do not ask the user where it is:
+Everything lives in one visible folder. Do not ask the user where it is:
 
-- Linux / WSL: `~/compass-highlighter/highlighter.yaml`
-- Windows: `%USERPROFILE%\compass-highlighter\highlighter.yaml`
+| File                                             | Holds                                                                                                                                                      |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `~/compass-highlighter/highlighter.yaml`         | features (tickets / pieces of work): status, collections with roles, fields, notes, queries, code refs, checks, artifacts; plus global `styles` and `tags` |
+| `~/compass-highlighter/models/<database>.yaml`   | feature-independent data model knowledge: what collections and fields mean, their style, tags and notes; applies whatever feature is active                |
+| `~/compass-highlighter/mappings/<database>.yaml` | which field points at which document (`from` / `to`), used for the link icons and the related-document panels                                              |
 
-If it does not exist, create the folder and the file yourself from
-`extra-features/highlighter.example.yaml` (keep `version`, `display` and `styles`; replace the
-example `features` with what the user asked for). Compass picks it up without a restart.
+On Windows the folder is `%USERPROFILE%\compass-highlighter\`. If a file does not exist,
+create it from the matching example (keep `version`, `display`, `styles`, `tags`; replace the
+example entries with what the user asked for). Compass picks changes up without a restart.
 
-Only if the user explicitly set Settings > Highlighter > "Config file path" does the file live
-elsewhere; the Highlighter tab in Compass shows the path in use.
+Only if the user explicitly set Settings > Highlighter > "Config file path" does the main file
+live elsewhere; the Highlighter tab shows the path in use and the loaded model and mapping files.
 
 ## 2. Edit the YAML, not the UI
 
@@ -37,8 +42,9 @@ Compass watches the file and reloads it within about a second. Rules:
   what the dropdown shows. Set `activeFeature` to the feature the user is working on now.
 - **Collections** are `db.collection` namespaces. Anything not listed is "not interested" for
   that feature, which matters when `display.listing` is `only-interested`.
-- **Field paths** are dot paths. Use `[]` for "each array element": `items[].sku`. Paths are
-  exact, not prefixes.
+- **Field paths** are dot paths. Use `[]` for "each array element" (`items[].sku`), `*` for one
+  dynamic segment such as an id used as a key (`occurrences.*.buckets`), `**` for any depth
+  (`**.updatedAt`). Otherwise paths are exact, not prefixes; an exact entry beats a wildcard.
 - **Relations** go on the field (`relatedTo: [{ namespace, path }]`) when they are field-level,
   or under `relations:` when they are conceptual (`from`, `to`, `via`, `notes`).
 - **Styles** are named under `styles:` and referenced by name. Built-in fallbacks exist for
@@ -65,9 +71,9 @@ Compass watches the file and reloads it within about a second. Rules:
   collection `alias`, `style`, `tags`, `notes`; per field `path`, `style`, `label`, `tags`,
   `notes`. Put "what this field means" there, and only ticket-specific notes in a feature.
   See `extra-features/highlighter.models.example.yaml`.
-- **Wildcards** in any path: `*` one segment (map keyed by an id: `occurrences.*.buckets`),
-  `**` any depth (`**.updatedAt`), `[]` array elements. Mappings from a map's key use
-  `use: key` (`from: occurrences.*`).
+- **Mapping options**: `as: auto` (default) matches both an ObjectId and its hex string, for
+  collections that store ids as text; `objectId` / `string` force one shape. `use: key` links
+  from a map entry's key instead of its value (`from: occurrences.*`, `to: fields._id`).
 - **Mappings live in a separate file per database**: `mappings/<database>.yaml` next to the
   config (e.g. `~/compass-highlighter/mappings/devlms.yaml`), entries `from: collection.path`,
   `to: collection.path`, optional `label`, `as` (auto | objectId | string), `notes`. The user
@@ -98,27 +104,49 @@ Typical requests and what to change:
 ## 3. Validate after every edit (mandatory)
 
 ```bash
-extra-features/validate-highlighter.sh            # checks ~/compass-highlighter/highlighter.yaml
-extra-features/validate-highlighter.sh <path>     # checks another file
+extra-features/validate-highlighter.sh            # the config plus its models/ and mappings/ folders
+extra-features/validate-highlighter.sh <path>     # another config file (and the folders next to it)
 ```
 
 It reports YAML syntax errors with line, column and a caret, schema errors with the YAML path
 and line, and semantic problems (unknown `activeFeature`, duplicate ids, namespaces without a
-dot, undeclared styles, relations to collections the feature does not list). Fix every `✖`
-before telling the user you are done; `⚠` lines are worth mentioning. Exit code 1 means Compass
-is still showing the previous valid config. If it says the schema is not compiled, run
+dot, undeclared styles, relations or queries on collections the feature does not list, query
+filters that do not parse, `use: key` on a path that is not a map entry). Fix every `✖` before
+telling the user you are done; `⚠` lines are worth mentioning. Exit code 1 means Compass is
+still showing the previous valid config. If it says the schema is not compiled, run
 `npm run compile -w @mongodb-js/compass-highlighter` once.
 
-Then tell the user which feature is active; Compass reloads the file on its own.
+Then tell the user which feature is active; Compass reloads the files on its own.
 
-## 4. Changing the Highlighter code or schema
+## 4. What the user sees (so you can explain it)
 
-- Code lives in `packages/compass-highlighter`. Schema: `src/config/schema.ts`. Upstream touch
-  points are listed in `extra-features/highlighter.md` under "Upstream files modified"; keep
-  that list current.
-- If you change the schema, update `extra-features/highlighter.example.yaml` to show every key,
-  then run `npm run sync-example -w @mongodb-js/compass-highlighter`. A test fails if the two
-  drift.
+- Sidebar: the feature dropdown; an eye button next to the search box that shows only the
+  active feature's collections; a coloured icon or dot on highlighted collections and an (i)
+  icon listing their tags.
+- Documents tab: a banner above the list naming the collection (alias, icon, notes); highlighted
+  rows in the style's colour with an uppercase chip for the field's `label`; expanded objects or
+  arrays framed as a labelled region, nesting as the document nests; linkable ids drawn as pills.
+- Links: the link icon next to a mapped field, or Ctrl + double-click on its value, opens the
+  related documents in a floating panel. Panels are draggable by the grip, stay open side by
+  side, show a copyable breadcrumb `collection.path[0].field → target(id)`, and have "Open in
+  new tab". A link inside a panel opens another panel.
+- Editing is opt-in: documents are read-only until the pencil toggle in the Documents toolbar is
+  on (fork feature, see `extra-features/edit-mode-toggle.md`).
+- Highlighter tab: the active feature's description, status, notes, artifacts, checklist,
+  collections, queries with "Open with filter", code references, relations, and the loaded
+  model and mapping files with any parse errors.
+
+## 5. Changing the Highlighter code or schema
+
+- Code lives in `packages/compass-highlighter`. Schemas: `src/config/schema.ts` (config),
+  `src/config/models.ts`, `src/config/mappings.ts`; path matching in `src/config/paths.ts`;
+  panels in `src/components/related-navigation.tsx`. Upstream touch points are listed in
+  `extra-features/highlighter.md` under "Upstream files modified"; keep that list current.
+- If you change a schema, update the matching example in `extra-features/` to show every key,
+  then run `npm run sync-example -w @mongodb-js/compass-highlighter` (the main example is
+  embedded in the package and a test fails if the two drift).
+- The web sandbox serves the files through `packages/compass-web/scripts/sandbox-dev-server.js`;
+  a new sidecar folder needs an endpoint there and a `read*` method on the config backends.
 - Run `npm test -w @mongodb-js/compass-highlighter` and `npm run check -w @mongodb-js/compass-highlighter`.
 - Rebuild dependents after touching shared contexts:
   `npm run compile -w @mongodb-js/compass-components -w @mongodb-js/compass-connections-navigation`.

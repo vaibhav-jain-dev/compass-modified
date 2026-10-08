@@ -12,7 +12,7 @@ where it lives, and how to use and extend it.
 
 | Feature          | Status                      | Doc                                                                                    | Packages touched                                                                                                                         |
 | ---------------- | --------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Highlighter      | in-progress                 | [highlighter.md](highlighter.md), [highlighter.example.yaml](highlighter.example.yaml) | compass-highlighter (new), compass-components, compass-sidebar, compass-workspaces, compass-settings, compass-preferences-model, compass |
+| Highlighter      | done                        | [highlighter.md](highlighter.md), [highlighter.example.yaml](highlighter.example.yaml) | compass-highlighter (new), compass-components, compass-sidebar, compass-workspaces, compass-settings, compass-preferences-model, compass |
 | Deep links       | planned (after Highlighter) | [deep-links.md](deep-links.md)                                                         | compass-highlighter, compass, compass-crud, compass-workspaces                                                                           |
 | Edit mode toggle | done                        | [edit-mode-toggle.md](edit-mode-toggle.md)                                             | compass-crud                                                                                                                             |
 

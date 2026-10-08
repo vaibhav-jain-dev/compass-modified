@@ -1,6 +1,6 @@
 # Highlighter
 
-**Status:** in-progress (phase 1 implemented; verified in the web sandbox and in the Electron app)
+**Status:** done (verified in the web sandbox against a real database; Electron best effort)
 
 **Targets:** web sandbox (`npm run start-web`) is primary. Electron works but is best effort.
 
@@ -207,8 +207,13 @@ The agent edits the file, Compass reloads it, and the UI updates without a resta
   `components/workspaces-provider.tsx`, `components/workspace-tab-context-provider.tsx`:
   register the new workspace type and `openHighlighterWorkspace`.
 - `packages/compass-components/src/components/document-list/element.tsx`: reads the field
-  decoration and applies colour, weight, background, icon and tooltip to the field key.
-- `packages/compass-components/src/components/document-list/index.ts`, `src/index.ts`: exports.
+  decoration and applies colour, weight, background, chip, icon, tooltip, the nested region and
+  Ctrl + double-click; exports `getFullKeyPathForElement`.
+- `packages/compass-components/src/components/document-list/element-editors.tsx`: the read-only
+  value span handles Ctrl + double-click and the pill style for linkable ids.
+- `packages/compass-components/src/components/document-list/decorated-document-header.tsx` (new),
+  `field-decorations-context.tsx` (new), `index.ts`, `src/index.ts`: the decoration contexts,
+  the collection banner and exports.
 - `packages/compass-connections-navigation/src/base-navigation-item.tsx`, `src/index.ts`:
   reads the item decoration (colour dot or icon, dimming) and exports the provider.
 - `packages/compass-sidebar/src/components/multiple-connections/sidebar.tsx`: feature dropdown.
@@ -217,21 +222,23 @@ The agent edits the file, Compass reloads it, and the UI updates without a resta
 - `packages/compass-sidebar/src/components/multiple-connections/connections-navigation.tsx`:
   `only-interested` filtering and item decorations for the tree.
 - `packages/compass-crud/src/components/document-list.tsx`: wraps the document views in
-  `HighlighterFieldDecorations`.
+  `HighlighterFieldDecorations` and renders the collection banner once above the list.
 - `packages/compass-preferences-model/src/preferences-schema.tsx`: `highlighterConfigPath`.
 - `packages/compass-settings/src/components/modal.tsx`, `src/stores/settings.ts`: settings tab.
 - `packages/compass/src/app/components/home.tsx`, `workspace.tsx`: mount the plugin and tab.
 - `packages/compass-web/src/entrypoint.tsx`: `highlighterBackend` prop on `CompassWeb`, plugin
   mount and tab registration. `sandbox/index.tsx` passes the HTTP backend;
   `sandbox/sandbox-multiplex-link.ts` reads the ws port injected by the dev server.
-- `packages/compass-web/webpack.config.js`: port fallback, highlighter endpoint, ws URL injection.
+- `packages/compass-web/webpack.config.js`, `scripts/sandbox-dev-server.js`: port fallback, the
+  `/highlighter/config`, `/highlighter/config/mappings` and `/highlighter/config/models`
+  endpoints, ws URL injection.
 - `packages/compass/package.json`, `packages/compass-sidebar/package.json`,
   `packages/compass-crud/package.json`: dependency on `@mongodb-js/compass-highlighter`.
 
 ## Validating a config
 
 ```bash
-extra-features/validate-highlighter.sh          # default file and its mappings/ folder
+extra-features/validate-highlighter.sh          # default file and its models/ and mappings/ folders
 extra-features/validate-highlighter.sh my.yaml  # any file
 ```
 
