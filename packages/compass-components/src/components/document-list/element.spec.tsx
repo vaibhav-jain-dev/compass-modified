@@ -173,6 +173,40 @@ describe('HadronElement', function () {
       expect(callArg.replace(/\s+/g, '')).to.equal("array:['item1','item2']");
     });
 
+    it('copies the full path with array indexes when "Copy path & value" is clicked', function () {
+      const nested = new HadronDocument({
+        sections: [{ groups: [{ lines: [{ label: 'Title' }] }] }],
+      });
+      const labelElement = nested
+        .get('sections')!
+        .get(0)!
+        .get('groups')!
+        .get(0)!
+        .get('lines')!
+        .get(0)!
+        .get('label')!;
+
+      render(
+        <HadronElement
+          value={labelElement}
+          editable={true}
+          editingEnabled={true}
+          lineNumberSize={1}
+          onAddElement={() => {}}
+        />
+      );
+
+      const elementNode = screen.getByTestId('hadron-document-element');
+      userEvent.click(elementNode, { button: 2 });
+      userEvent.click(screen.getByText('Copy path & value'), undefined, {
+        skipPointerEventsCheck: true,
+      });
+
+      expect(clipboardWriteTextStub).to.have.been.calledWith(
+        "sections[0].groups[0].lines[0].label = 'Title'"
+      );
+    });
+
     it('copies field and value when "Copy field & value" is clicked - object value', function () {
       render(
         <HadronElement

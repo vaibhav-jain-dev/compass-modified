@@ -667,6 +667,15 @@ export const HadronElement: React.FunctionComponent<{
               );
             },
           },
+          {
+            label: 'Copy path & value',
+            onAction: () => {
+              const path = getFullKeyPathForElement(element);
+              void navigator.clipboard.writeText(
+                `${path} = ${element.toShellSyntax()}`
+              );
+            },
+          },
           type.value === 'String' && isValidUrl(value.value)
             ? {
                 label: 'Open URL in browser',
