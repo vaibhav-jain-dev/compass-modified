@@ -15,6 +15,10 @@ import { calculateShowMoreToggleOffset, HadronElement } from './element';
 import VisibleFieldsToggle from './visible-field-toggle';
 import { documentTypography } from './typography';
 import { useSyncStateOnPropChange } from '../../hooks/use-sync-state-on-prop-change';
+import {
+  applyDocumentFindFilter,
+  useDocumentFindFilter,
+} from './find-filter-context';
 
 function useHadronDocument(doc: HadronDocumentType) {
   const forceUpdate = useForceUpdate();
@@ -97,6 +101,8 @@ const HadronDocument: React.FunctionComponent<{
   className = '',
 }) => {
   const { elements, visibleElements } = useHadronDocument(document);
+  const findFilter = useDocumentFindFilter();
+  const shownElements = applyDocumentFindFilter(visibleElements, findFilter);
   const [autoFocus, setAutoFocus] = useState<{
     id: string;
     type: 'key' | 'value' | 'type';
@@ -149,7 +155,7 @@ const HadronDocument: React.FunctionComponent<{
           </div>
         )}
         <AutoFocusContext.Provider value={editing ? autoFocus : null}>
-          {visibleElements.map((el, idx) => {
+          {shownElements.map((el, idx) => {
             return (
               <HadronElement
                 key={idx}

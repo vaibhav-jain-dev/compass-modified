@@ -28,6 +28,10 @@ import { useSyncStateOnPropChange } from '../../hooks/use-sync-state-on-prop-cha
 import { useBSONDisplayOptions } from './bson-display-options-context';
 import { setDraggedDocumentField } from './field-drag';
 import { useFieldDecoration } from './field-decorations-context';
+import {
+  applyDocumentFindFilter,
+  useDocumentFindFilter,
+} from './find-filter-context';
 
 function useElementEditor(
   el: HadronElementType,
@@ -589,6 +593,7 @@ export const HadronElement: React.FunctionComponent<{
 }) => {
   const darkMode = useDarkMode();
   const autoFocus = useAutoFocusContext();
+  const findFilter = useDocumentFindFilter();
 
   const {
     id,
@@ -757,6 +762,7 @@ export const HadronElement: React.FunctionComponent<{
     [editable, level, extraGutterWidth]
   );
 
+  const shownChildren = applyDocumentFindFilter(visibleChildren, findFilter);
   const isValid = key.valid && value.valid;
   const shouldShowActions = editingEnabled;
 
@@ -1134,7 +1140,7 @@ export const HadronElement: React.FunctionComponent<{
             decoration ? 'hadron-document-element-region' : undefined
           }
         >
-          {visibleChildren.map((el: HadronElementType, idx: React.Key) => {
+          {shownChildren.map((el: HadronElementType, idx: React.Key) => {
             return (
               <HadronElement
                 key={idx}

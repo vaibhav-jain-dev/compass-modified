@@ -1,12 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import HadronDocument from 'hadron-document';
 import {
+  DocumentList,
   css,
   cx,
   spacing,
@@ -22,7 +17,7 @@ import {
   DocumentFinder,
   findActiveRowStyles,
 } from './document-finder/document-finder';
-import { buildFinderEntries } from './document-finder/search';
+import { useDocumentFinder } from './document-finder/use-document-finder';
 
 const listContainerStyles = css({
   position: 'relative',
@@ -109,39 +104,15 @@ const VirtualizedDocumentListView: React.FC<
   const containerRef = useRef<HTMLDivElement>(null);
   const fallbackListRef = useRef<VirtualListRef['current']>(null);
   const resolvedListRef: VirtualListRef = listRef ?? fallbackListRef;
-  const [isFinderOpen, setIsFinderOpen] = useState(false);
-  const [finderFocusRequest, setFinderFocusRequest] = useState(0);
-  // Only indexed while the finder is open, so the list costs nothing otherwise.
-  const finderEntries = useMemo(
-    () => (isFinderOpen ? buildFinderEntries(docs) : []),
-    [docs, isFinderOpen]
+  const finder = useDocumentFinder({
+    docs,
+    listRef: resolvedListRef,
+    containerRef,
+  });
+  const findFilter = useMemo(
+    () => ({ keepIds: finder.keepIds }),
+    [finder.keepIds]
   );
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const isFindShortcut =
-        (event.ctrlKey || event.metaKey) &&
-        !event.altKey &&
-        !event.shiftKey &&
-        event.key.toLowerCase() === 'f';
-      if (!isFindShortcut) {
-        return;
-      }
-      // Only take over Ctrl+F while the list has focus, not while typing in
-      // the query bar or another input.
-      const hasFocusInList =
-        containerRef.current?.contains(document.activeElement) ||
-        document.activeElement === document.body;
-      if (!hasFocusInList) {
-        return;
-      }
-      event.preventDefault();
-      setIsFinderOpen(true);
-      setFinderFocusRequest((request) => request + 1);
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
 
   const renderItem: VirtualListItemRenderer<HadronDocument> = useCallback(
     (
@@ -182,27 +153,36 @@ const VirtualizedDocumentListView: React.FC<
       ref={containerRef}
       className={cx(listContainerStyles, findActiveRowStyles)}
     >
-      <VirtualList
-        items={docs}
-        renderItem={renderItem}
-        estimateItemInitialHeight={estimateDocumentInitialHeight}
-        rowGap={spacing[200]}
-        dataTestId="document-list"
-        itemDataTestId="document-list-item"
-        listOuterContainerClassName={spacingStyles}
-        initialScrollTop={initialScrollTop}
-        scrollableContainerRef={scrollableContainerRef}
-        listRef={resolvedListRef}
-        overScanCount={__TEST_OVERSCAN_COUNT}
-        __TEST_LIST_HEIGHT={__TEST_LIST_HEIGHT}
-      ></VirtualList>
-      {isFinderOpen && (
-        <DocumentFinder
-          entries={finderEntries}
+      <DocumentList.DocumentFindFilterProvider value={findFilter}>
+        <VirtualList
+          items={finder.visibleDocs}
+          renderItem={renderItem}
+          estimateItemInitialHeight={estimateDocumentInitialHeight}
+          rowGap={spacing[200]}
+          dataTestId="document-list"
+          itemDataTestId="document-list-item"
+          listOuterContainerClassName={spacingStyles}
+          initialScrollTop={initialScrollTop}
+          scrollableContainerRef={scrollableContainerRef}
           listRef={resolvedListRef}
-          containerRef={containerRef}
-          focusRequest={finderFocusRequest}
-          onClose={() => setIsFinderOpen(false)}
+          overScanCount={__TEST_OVERSCAN_COUNT}
+          __TEST_LIST_HEIGHT={__TEST_LIST_HEIGHT}
+        ></VirtualList>
+      </DocumentList.DocumentFindFilterProvider>
+      {finder.isOpen && (
+        <DocumentFinder
+          entries={finder.entries}
+          query={finder.query}
+          onQueryChange={finder.changeQuery}
+          matchCount={finder.matchCount}
+          activeIndex={finder.activeIndex}
+          onStep={finder.stepMatch}
+          onlyMatchingDocuments={finder.onlyMatchingDocuments}
+          onOnlyMatchingDocumentsChange={finder.setOnlyMatchingDocuments}
+          onlyMatchingFields={finder.onlyMatchingFields}
+          onOnlyMatchingFieldsChange={finder.setOnlyMatchingFields}
+          focusRequest={finder.focusRequest}
+          onClose={finder.close}
         />
       )}
     </div>

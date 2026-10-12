@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Checkbox,
   Icon,
   IconButton,
   TextInput,
@@ -7,23 +8,11 @@ import {
   cx,
   palette,
   spacing,
-  type VirtualListRef,
 } from '@mongodb-js/compass-components';
-import {
-  searchFinderEntries,
-  suggestFinderPaths,
-  type FinderEntry,
-  type FinderMatch,
-} from './search';
-import { revealElement } from './reveal';
-
-const ACTIVE_ROW_ATTRIBUTE = 'data-find-active';
-// The matched row only exists after the list has rendered its document, which
-// takes a few frames after scrolling to it.
-const MAX_FRAMES_TO_WAIT_FOR_ROW = 30;
+import { suggestFinderPaths, type FinderEntry } from './search';
 
 export const findActiveRowStyles = css({
-  [`& [${ACTIVE_ROW_ATTRIBUTE}="true"]`]: {
+  '& [data-find-active="true"]': {
     backgroundColor: palette.yellow.light3,
   },
 });
@@ -33,16 +22,22 @@ const finderStyles = css({
   top: spacing[200],
   right: spacing[400],
   zIndex: 10,
-  width: 420,
+  width: 460,
   maxWidth: 'calc(100% - 32px)',
   display: 'flex',
-  alignItems: 'center',
+  flexDirection: 'column',
   gap: spacing[100],
-  padding: spacing[100],
+  padding: spacing[200],
   borderRadius: spacing[200],
   border: `1px solid ${palette.gray.light2}`,
   backgroundColor: palette.white,
   boxShadow: `0 2px 8px ${palette.gray.light2}`,
+});
+
+const rowStyles = css({
+  display: 'flex',
+  alignItems: 'center',
+  gap: spacing[100],
 });
 
 const inputWrapperStyles = css({
@@ -56,6 +51,12 @@ const countStyles = css({
   textAlign: 'right',
   whiteSpace: 'nowrap',
   color: palette.gray.dark1,
+  fontSize: 12,
+});
+
+const togglesStyles = css({
+  display: 'flex',
+  gap: spacing[300],
   fontSize: 12,
 });
 
@@ -92,34 +93,6 @@ const suggestionActiveStyles = css({
   backgroundColor: palette.blue.light3,
 });
 
-/**
- * Scrolls the row of `uuid` into view once the virtual list has rendered it,
- * and marks it as the active match.
- */
-const scrollToRenderedElement = (
-  container: HTMLElement | null,
-  uuid: string
-) => {
-  let framesLeft = MAX_FRAMES_TO_WAIT_FOR_ROW;
-  const attempt = () => {
-    const row = container?.querySelector<HTMLElement>(
-      `[data-document-element="true"][data-id="${uuid}"]`
-    );
-    if (!row) {
-      if (framesLeft-- > 0) {
-        requestAnimationFrame(attempt);
-      }
-      return;
-    }
-    container
-      ?.querySelector(`[${ACTIVE_ROW_ATTRIBUTE}]`)
-      ?.removeAttribute(ACTIVE_ROW_ATTRIBUTE);
-    row.setAttribute(ACTIVE_ROW_ATTRIBUTE, 'true');
-    row.scrollIntoView({ block: 'center' });
-  };
-  requestAnimationFrame(attempt);
-};
-
 const getCountLabel = (
   query: string,
   matchCount: number,
@@ -132,9 +105,17 @@ const getCountLabel = (
 };
 
 type DocumentFinderProps = {
+  // Used for path suggestions, so they come from the current collection.
   entries: FinderEntry[];
-  listRef: VirtualListRef;
-  containerRef: React.RefObject<HTMLDivElement>;
+  query: string;
+  onQueryChange: (query: string) => void;
+  matchCount: number;
+  activeIndex: number;
+  onStep: (direction: 1 | -1) => void;
+  onlyMatchingDocuments: boolean;
+  onOnlyMatchingDocumentsChange: (value: boolean) => void;
+  onlyMatchingFields: boolean;
+  onOnlyMatchingFieldsChange: (value: boolean) => void;
   // Changes each time Ctrl+F is pressed while the finder is open, so that
   // pressing it again refocuses and selects the input.
   focusRequest: number;
@@ -143,54 +124,35 @@ type DocumentFinderProps = {
 
 export const DocumentFinder: React.FunctionComponent<DocumentFinderProps> = ({
   entries,
-  listRef,
-  containerRef,
+  query,
+  onQueryChange,
+  matchCount,
+  activeIndex,
+  onStep,
+  onlyMatchingDocuments,
+  onOnlyMatchingDocumentsChange,
+  onlyMatchingFields,
+  onOnlyMatchingFieldsChange,
   focusRequest,
   onClose,
 }) => {
   const inputRef = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState('');
-  const [activeIndex, setActiveIndex] = useState(0);
   const [suggestionIndex, setSuggestionIndex] = useState(-1);
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
 
-  const matches = useMemo(
-    () => searchFinderEntries(entries, query),
-    [entries, query]
-  );
   const suggestions = useMemo(
     () => (isSuggestionsOpen ? suggestFinderPaths(entries, query) : []),
     [entries, query, isSuggestionsOpen]
   );
-  const activeMatch: FinderMatch | undefined = matches.at(activeIndex);
 
+  // Runs on mount too, since the first Ctrl+F is the one that opens the bar.
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
   }, [focusRequest]);
 
-  useEffect(() => {
-    if (!activeMatch) {
-      return;
-    }
-    const { element, docIndex } = activeMatch.entry;
-    revealElement(element);
-    listRef.current?.scrollToItem(docIndex, 'center');
-    scrollToRenderedElement(containerRef.current, element.uuid);
-  }, [activeMatch, listRef, containerRef]);
-
-  const stepMatch = (direction: 1 | -1) => {
-    if (matches.length === 0) {
-      return;
-    }
-    setActiveIndex(
-      (index) => (index + direction + matches.length) % matches.length
-    );
-  };
-
   const acceptSuggestion = (path: string) => {
-    setQuery(path);
-    setActiveIndex(0);
+    onQueryChange(path);
     setSuggestionIndex(-1);
     setIsSuggestionsOpen(false);
     inputRef.current?.focus();
@@ -224,7 +186,7 @@ export const DocumentFinder: React.FunctionComponent<DocumentFinderProps> = ({
         if (highlighted !== undefined) {
           acceptSuggestion(highlighted);
         } else {
-          stepMatch(event.shiftKey ? -1 : 1);
+          onStep(event.shiftKey ? -1 : 1);
         }
         return;
       }
@@ -239,72 +201,89 @@ export const DocumentFinder: React.FunctionComponent<DocumentFinderProps> = ({
     }
   };
 
+  const hasMatches = matchCount > 0;
+
   return (
     <div className={finderStyles} role="search" data-testid="document-finder">
-      <div className={inputWrapperStyles}>
-        <TextInput
-          ref={inputRef}
-          aria-label="Find in documents"
-          placeholder="Find a field path or value"
-          autoComplete="off"
-          value={query}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setActiveIndex(0);
-            setSuggestionIndex(-1);
-            setIsSuggestionsOpen(true);
-          }}
-          onKeyDown={onKeyDown}
-          onBlur={() => setIsSuggestionsOpen(false)}
-          onFocus={() => setIsSuggestionsOpen(true)}
-        />
-        {isSuggestionsOpen && suggestions.length > 0 && (
-          <ul
-            role="listbox"
-            className={suggestionsStyles}
-            data-testid="document-finder-suggestions"
-          >
-            {suggestions.map((path, index) => (
-              <li
-                key={path}
-                role="option"
-                aria-selected={index === suggestionIndex}
-                className={cx(
-                  suggestionStyles,
-                  index === suggestionIndex && suggestionActiveStyles
-                )}
-                onMouseDown={(event) => {
-                  // Keeps focus in the input so the list does not close first.
-                  event.preventDefault();
-                  acceptSuggestion(path);
-                }}
-              >
-                {path}
-              </li>
-            ))}
-          </ul>
-        )}
+      <div className={rowStyles}>
+        <div className={inputWrapperStyles}>
+          <TextInput
+            ref={inputRef}
+            aria-label="Find in documents"
+            placeholder="Find a field path or value"
+            autoComplete="off"
+            value={query}
+            onChange={(event) => {
+              onQueryChange(event.target.value);
+              setSuggestionIndex(-1);
+              setIsSuggestionsOpen(true);
+            }}
+            onKeyDown={onKeyDown}
+            onBlur={() => setIsSuggestionsOpen(false)}
+            onFocus={() => setIsSuggestionsOpen(true)}
+          />
+          {isSuggestionsOpen && suggestions.length > 0 && (
+            <ul
+              role="listbox"
+              className={suggestionsStyles}
+              data-testid="document-finder-suggestions"
+            >
+              {suggestions.map((path, index) => (
+                <li
+                  key={path}
+                  role="option"
+                  aria-selected={index === suggestionIndex}
+                  className={cx(
+                    suggestionStyles,
+                    index === suggestionIndex && suggestionActiveStyles
+                  )}
+                  onMouseDown={(event) => {
+                    // Keeps focus in the input so the list does not close first.
+                    event.preventDefault();
+                    acceptSuggestion(path);
+                  }}
+                >
+                  {path}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        <span className={countStyles} data-testid="document-finder-count">
+          {getCountLabel(query, matchCount, activeIndex)}
+        </span>
+        <IconButton
+          aria-label="Previous match"
+          onClick={() => onStep(-1)}
+          disabled={!hasMatches}
+        >
+          <Icon glyph="CaretUp" />
+        </IconButton>
+        <IconButton
+          aria-label="Next match"
+          onClick={() => onStep(1)}
+          disabled={!hasMatches}
+        >
+          <Icon glyph="CaretDown" />
+        </IconButton>
+        <IconButton aria-label="Close find" onClick={onClose}>
+          <Icon glyph="X" />
+        </IconButton>
       </div>
-      <span className={countStyles} data-testid="document-finder-count">
-        {getCountLabel(query, matches.length, activeIndex)}
-      </span>
-      <IconButton
-        aria-label="Previous match"
-        onClick={() => stepMatch(-1)}
-        disabled={matches.length === 0}
-      >
-        <Icon glyph="CaretUp" />
-      </IconButton>
-      <IconButton
-        aria-label="Next match"
-        onClick={() => stepMatch(1)}
-        disabled={matches.length === 0}
-      >
-        <Icon glyph="CaretDown" />
-      </IconButton>
-      <IconButton aria-label="Close find" onClick={onClose}>
-        <Icon glyph="X" />
-      </IconButton>
+      <div className={togglesStyles}>
+        <Checkbox
+          label="Only matching documents"
+          checked={onlyMatchingDocuments}
+          onChange={(event) =>
+            onOnlyMatchingDocumentsChange(event.target.checked)
+          }
+        />
+        <Checkbox
+          label="Only matching fields"
+          checked={onlyMatchingFields}
+          onChange={(event) => onOnlyMatchingFieldsChange(event.target.checked)}
+        />
+      </div>
     </div>
   );
 };

@@ -18,6 +18,11 @@ export {
 } from './field-decorations-context';
 export { DecoratedDocumentHeader } from './decorated-document-header';
 export {
+  DocumentFindFilterProvider,
+  useDocumentFindFilter,
+  type DocumentFindFilter,
+} from './find-filter-context';
+export {
   BSONDisplayOptionsProvider,
   useBSONDisplayOptions,
   type BSONDisplayOptions,

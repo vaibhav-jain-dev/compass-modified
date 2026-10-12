@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import HadronDocument from 'hadron-document';
 import {
   buildFinderEntries,
+  collectFinderKeepIds,
   searchFinderEntries,
   suggestFinderPaths,
 } from './search';
@@ -114,6 +115,23 @@ describe('document finder search', function () {
       const entries = buildFinderEntries([loanDocument()]);
 
       expect(suggestFinderPaths(entries, '')).to.deep.equal([]);
+    });
+  });
+
+  describe('collectFinderKeepIds', function () {
+    it('keeps the matching field and its ancestors but not its siblings', function () {
+      const doc = new HadronDocument({
+        lines: [{ label: 'Title', amount: 5 }],
+      });
+      const entries = buildFinderEntries([doc]);
+      const matches = searchFinderEntries(entries, 'lines[0].label');
+      const keepIds = collectFinderKeepIds(matches);
+
+      const labelElement = doc.get('lines')!.get(0)!.get('label')!;
+      const amountElement = doc.get('lines')!.get(0)!.get('amount')!;
+      expect(keepIds.has(labelElement.uuid)).to.equal(true);
+      expect(keepIds.has(doc.get('lines')!.uuid)).to.equal(true);
+      expect(keepIds.has(amountElement.uuid)).to.equal(false);
     });
   });
 

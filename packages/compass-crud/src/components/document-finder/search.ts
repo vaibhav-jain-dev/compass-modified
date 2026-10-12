@@ -84,6 +84,23 @@ export const searchFinderEntries = (
 };
 
 /**
+ * uuids of the matching fields and all of their ancestors. Used to show only
+ * the matching fields, which still need their parents to be rendered.
+ */
+export const collectFinderKeepIds = (matches: FinderMatch[]): Set<string> => {
+  const keepIds = new Set<string>();
+  for (const { entry } of matches) {
+    keepIds.add(entry.element.uuid);
+    let ancestor: HadronElement | HadronDocument | null = entry.element.parent;
+    while (ancestor && !ancestor.isRoot()) {
+      keepIds.add(ancestor.uuid);
+      ancestor = ancestor.parent;
+    }
+  }
+  return keepIds;
+};
+
+/**
  * Completions for the query, built from the paths of the loaded documents of
  * the current collection. Paths that start with the query are listed before
  * paths that only contain it.
