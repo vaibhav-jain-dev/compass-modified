@@ -7,7 +7,6 @@ import {
   resetGlobalCSS,
 } from '@mongodb-js/compass-components';
 import type * as CompassWebModule from '../src';
-import { OpenInAtlasToast } from './open-in-atlas-toast';
 import { createHashHistory } from 'history';
 // Subpath import on purpose: the main entry would pull the whole plugin
 // (and the driver) into the sandbox bundle, which has no Node polyfills.
@@ -92,7 +91,6 @@ const App = () => {
           onDefaultConnectionRequest={resolveDefaultConnection}
           localAiEndpoint="/local-ai"
         ></CompassWeb>
-        <OpenInAtlasToast></OpenInAtlasToast>
       </Body>
     </CompassComponentsProvider>
   );
