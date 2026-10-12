@@ -1,0 +1,310 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Icon,
+  IconButton,
+  TextInput,
+  css,
+  cx,
+  palette,
+  spacing,
+  type VirtualListRef,
+} from '@mongodb-js/compass-components';
+import {
+  searchFinderEntries,
+  suggestFinderPaths,
+  type FinderEntry,
+  type FinderMatch,
+} from './search';
+import { revealElement } from './reveal';
+
+const ACTIVE_ROW_ATTRIBUTE = 'data-find-active';
+// The matched row only exists after the list has rendered its document, which
+// takes a few frames after scrolling to it.
+const MAX_FRAMES_TO_WAIT_FOR_ROW = 30;
+
+export const findActiveRowStyles = css({
+  [`& [${ACTIVE_ROW_ATTRIBUTE}="true"]`]: {
+    backgroundColor: palette.yellow.light3,
+  },
+});
+
+const finderStyles = css({
+  position: 'absolute',
+  top: spacing[200],
+  right: spacing[400],
+  zIndex: 10,
+  width: 420,
+  maxWidth: 'calc(100% - 32px)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: spacing[100],
+  padding: spacing[100],
+  borderRadius: spacing[200],
+  border: `1px solid ${palette.gray.light2}`,
+  backgroundColor: palette.white,
+  boxShadow: `0 2px 8px ${palette.gray.light2}`,
+});
+
+const inputWrapperStyles = css({
+  position: 'relative',
+  flexGrow: 1,
+  minWidth: 0,
+});
+
+const countStyles = css({
+  minWidth: 64,
+  textAlign: 'right',
+  whiteSpace: 'nowrap',
+  color: palette.gray.dark1,
+  fontSize: 12,
+});
+
+const suggestionsStyles = css({
+  position: 'absolute',
+  top: '100%',
+  left: 0,
+  right: 0,
+  zIndex: 11,
+  maxHeight: 240,
+  overflowY: 'auto',
+  margin: 0,
+  marginTop: spacing[50],
+  padding: spacing[50],
+  listStyle: 'none',
+  borderRadius: spacing[100],
+  border: `1px solid ${palette.gray.light2}`,
+  backgroundColor: palette.white,
+  boxShadow: `0 2px 8px ${palette.gray.light2}`,
+  fontFamily: 'monospace',
+  fontSize: 12,
+});
+
+const suggestionStyles = css({
+  padding: `${spacing[50]}px ${spacing[100]}px`,
+  borderRadius: spacing[50],
+  cursor: 'pointer',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+});
+
+const suggestionActiveStyles = css({
+  backgroundColor: palette.blue.light3,
+});
+
+/**
+ * Scrolls the row of `uuid` into view once the virtual list has rendered it,
+ * and marks it as the active match.
+ */
+const scrollToRenderedElement = (
+  container: HTMLElement | null,
+  uuid: string
+) => {
+  let framesLeft = MAX_FRAMES_TO_WAIT_FOR_ROW;
+  const attempt = () => {
+    const row = container?.querySelector<HTMLElement>(
+      `[data-document-element="true"][data-id="${uuid}"]`
+    );
+    if (!row) {
+      if (framesLeft-- > 0) {
+        requestAnimationFrame(attempt);
+      }
+      return;
+    }
+    container
+      ?.querySelector(`[${ACTIVE_ROW_ATTRIBUTE}]`)
+      ?.removeAttribute(ACTIVE_ROW_ATTRIBUTE);
+    row.setAttribute(ACTIVE_ROW_ATTRIBUTE, 'true');
+    row.scrollIntoView({ block: 'center' });
+  };
+  requestAnimationFrame(attempt);
+};
+
+const getCountLabel = (
+  query: string,
+  matchCount: number,
+  activeIndex: number
+): string => {
+  if (matchCount > 0) {
+    return `${activeIndex + 1} of ${matchCount}`;
+  }
+  return query.trim() ? 'No results' : '';
+};
+
+type DocumentFinderProps = {
+  entries: FinderEntry[];
+  listRef: VirtualListRef;
+  containerRef: React.RefObject<HTMLDivElement>;
+  // Changes each time Ctrl+F is pressed while the finder is open, so that
+  // pressing it again refocuses and selects the input.
+  focusRequest: number;
+  onClose: () => void;
+};
+
+export const DocumentFinder: React.FunctionComponent<DocumentFinderProps> = ({
+  entries,
+  listRef,
+  containerRef,
+  focusRequest,
+  onClose,
+}) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
+
+  const matches = useMemo(
+    () => searchFinderEntries(entries, query),
+    [entries, query]
+  );
+  const suggestions = useMemo(
+    () => (isSuggestionsOpen ? suggestFinderPaths(entries, query) : []),
+    [entries, query, isSuggestionsOpen]
+  );
+  const activeMatch: FinderMatch | undefined = matches.at(activeIndex);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [focusRequest]);
+
+  useEffect(() => {
+    if (!activeMatch) {
+      return;
+    }
+    const { element, docIndex } = activeMatch.entry;
+    revealElement(element);
+    listRef.current?.scrollToItem(docIndex, 'center');
+    scrollToRenderedElement(containerRef.current, element.uuid);
+  }, [activeMatch, listRef, containerRef]);
+
+  const stepMatch = (direction: 1 | -1) => {
+    if (matches.length === 0) {
+      return;
+    }
+    setActiveIndex(
+      (index) => (index + direction + matches.length) % matches.length
+    );
+  };
+
+  const acceptSuggestion = (path: string) => {
+    setQuery(path);
+    setActiveIndex(0);
+    setSuggestionIndex(-1);
+    setIsSuggestionsOpen(false);
+    inputRef.current?.focus();
+  };
+
+  const moveSuggestion = (direction: 1 | -1) => {
+    setIsSuggestionsOpen(true);
+    setSuggestionIndex((index) => {
+      if (index < 0) {
+        return direction === 1 ? 0 : suggestions.length - 1;
+      }
+      return (index + direction + suggestions.length) % suggestions.length;
+    });
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    switch (event.key) {
+      case 'ArrowDown':
+      case 'ArrowUp': {
+        if (suggestions.length === 0) {
+          return;
+        }
+        event.preventDefault();
+        moveSuggestion(event.key === 'ArrowDown' ? 1 : -1);
+        return;
+      }
+      case 'Enter': {
+        event.preventDefault();
+        const highlighted =
+          suggestionIndex >= 0 ? suggestions[suggestionIndex] : undefined;
+        if (highlighted !== undefined) {
+          acceptSuggestion(highlighted);
+        } else {
+          stepMatch(event.shiftKey ? -1 : 1);
+        }
+        return;
+      }
+      case 'Escape': {
+        if (isSuggestionsOpen && suggestions.length > 0) {
+          setIsSuggestionsOpen(false);
+        } else {
+          onClose();
+        }
+        return;
+      }
+    }
+  };
+
+  return (
+    <div className={finderStyles} role="search" data-testid="document-finder">
+      <div className={inputWrapperStyles}>
+        <TextInput
+          ref={inputRef}
+          aria-label="Find in documents"
+          placeholder="Find a field path or value"
+          autoComplete="off"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+            setActiveIndex(0);
+            setSuggestionIndex(-1);
+            setIsSuggestionsOpen(true);
+          }}
+          onKeyDown={onKeyDown}
+          onBlur={() => setIsSuggestionsOpen(false)}
+          onFocus={() => setIsSuggestionsOpen(true)}
+        />
+        {isSuggestionsOpen && suggestions.length > 0 && (
+          <ul
+            role="listbox"
+            className={suggestionsStyles}
+            data-testid="document-finder-suggestions"
+          >
+            {suggestions.map((path, index) => (
+              <li
+                key={path}
+                role="option"
+                aria-selected={index === suggestionIndex}
+                className={cx(
+                  suggestionStyles,
+                  index === suggestionIndex && suggestionActiveStyles
+                )}
+                onMouseDown={(event) => {
+                  // Keeps focus in the input so the list does not close first.
+                  event.preventDefault();
+                  acceptSuggestion(path);
+                }}
+              >
+                {path}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <span className={countStyles} data-testid="document-finder-count">
+        {getCountLabel(query, matches.length, activeIndex)}
+      </span>
+      <IconButton
+        aria-label="Previous match"
+        onClick={() => stepMatch(-1)}
+        disabled={matches.length === 0}
+      >
+        <Icon glyph="CaretUp" />
+      </IconButton>
+      <IconButton
+        aria-label="Next match"
+        onClick={() => stepMatch(1)}
+        disabled={matches.length === 0}
+      >
+        <Icon glyph="CaretDown" />
+      </IconButton>
+      <IconButton aria-label="Close find" onClick={onClose}>
+        <Icon glyph="X" />
+      </IconButton>
+    </div>
+  );
+};

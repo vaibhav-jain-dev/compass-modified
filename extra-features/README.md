@@ -16,6 +16,7 @@ where it lives, and how to use and extend it.
 | Deep links                | planned (after Highlighter) | [deep-links.md](deep-links.md)                                                         | compass-highlighter, compass, compass-crud, compass-workspaces                                                                           |
 | Edit mode toggle          | done                        | [edit-mode-toggle.md](edit-mode-toggle.md)                                             | compass-crud                                                                                                                             |
 | Local AI query generation | in-progress                 | [local-ai.md](local-ai.md), [ai.example.yaml](ai.example.yaml)                         | compass-generative-ai, compass-web, compass-query-bar, compass-crud, compass-highlighter                                                 |
+| Document finder           | done                        | [document-finder.md](document-finder.md)                                               | compass-crud                                                                                                                             |
 
 Statuses: `planned` (doc written, code not started), `in-progress`, `done`, `deprecated`.
 
