@@ -5,6 +5,8 @@ import type { ChangeFilterEvent } from '../modules/change-filter';
 import {
   applyFilterChange,
   applyFromHistory,
+  applyQuery,
+  changeField,
 } from '../stores/query-bar-reducer';
 import { mapFormFieldsToQuery } from '../utils/query';
 import { createServiceLocator } from '@mongodb-js/compass-app-registry';
@@ -92,17 +94,35 @@ export function useChangeQueryBarQuery() {
 }
 
 /**
- * Fork extra feature: apply a complete query (filter, project, sort, skip,
- * limit) to the query bar and run it, the way "apply from history" does.
- * Used by the highlighter's predefined queries menu.
+ * Fork extra feature: fill the query bar with a complete query (filter,
+ * project, sort, skip, limit) and apply it as if "Apply" was clicked, so the
+ * last applied query for `source` is updated. The caller still has to refresh
+ * the results. Used by the highlighter's predefined queries menu.
  */
-export function useApplyQueryBarQuery() {
+export function useApplyQueryBarQuery(source: string) {
   const store = useStore();
   return useCallback(
     (query: BaseQuery) => {
       store.dispatch(applyFromHistory(query));
+      store.dispatch(applyQuery(source));
     },
-    [store]
+    [store, source]
+  );
+}
+
+/**
+ * Fork extra feature: sets the sort field of the query bar and applies the
+ * query, the way typing a sort and clicking Find does. Used by the query
+ * comparison view to keep results in _id order.
+ */
+export function useApplyQueryBarSort(source: string) {
+  const store = useStore();
+  return useCallback(
+    (sort: Record<string, unknown>) => {
+      store.dispatch(changeField('sort', JSON.stringify(sort)));
+      store.dispatch(applyQuery(source));
+    },
+    [store, source]
   );
 }
 

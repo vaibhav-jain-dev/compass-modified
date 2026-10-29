@@ -21,6 +21,7 @@ export type RequiredDataServiceProps =
   | 'collectionStats'
   | 'collectionInfo'
   | 'listCollections'
+  | 'listDatabases'
   | 'isListSearchIndexesSupported'
   | 'fetchShardKey';
 // TODO: It might make sense to refactor the DataService interface to be closer to

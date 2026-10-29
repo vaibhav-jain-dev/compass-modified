@@ -127,6 +127,9 @@ names still work and get a stable colour.
 A highlighter button in the Documents toolbar (next to Queries) hides or shows every mark for
 the session, so a document can be read plainly and the marks brought back when needed.
 
+The Queries button lists the collection's predefined queries. Picking one fills the query bar and runs
+it, the same as clicking Apply.
+
 - A coloured banner above the document list (once, not per card) names the collection the way you
   think about it (the collection's `alias`, icon and notes, from the model file or the feature).
   Panels show the same banner once at the top.
@@ -232,6 +235,8 @@ The agent edits the file, Compass reloads it, and the UI updates without a resta
   `only-interested` filtering and item decorations for the tree.
 - `packages/compass-crud/src/components/document-list.tsx`: wraps the document views in
   `HighlighterFieldDecorations` and renders the collection banner once above the list.
+- `packages/compass-query-bar/src/components/hooks.tsx`: `useApplyQueryBarQuery` fills the query bar
+  and applies it for the Queries menu.
 - `packages/compass-preferences-model/src/preferences-schema.tsx`: `highlighterConfigPath`.
 - `packages/compass-settings/src/components/modal.tsx`, `src/stores/settings.ts`: settings tab.
 - `packages/compass/src/app/components/home.tsx`, `workspace.tsx`: mount the plugin and tab.

@@ -1,5 +1,6 @@
 import React, {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -24,6 +25,7 @@ import type { BulkUpdateModalProps } from './bulk-update-modal';
 import BulkUpdateModal from './bulk-update-modal';
 import type { DocumentListViewProps } from './document-list-view';
 import VirtualizedDocumentListView from './virtualized-document-list-view';
+import { QueryCompareView } from './query-compare/query-compare-view';
 import type { DocumentJsonViewProps } from './document-json-view';
 import VirtualizedDocumentJsonView from './virtualized-document-json-view';
 import type { DocumentTableViewProps } from './table-view/document-table-view';
@@ -33,7 +35,10 @@ import {
   HighlighterQueriesMenu,
   HighlighterDecorationsToggle,
 } from '@mongodb-js/compass-highlighter';
-import { useApplyQueryBarQuery } from '@mongodb-js/compass-query-bar';
+import {
+  useApplyQueryBarQuery,
+  useApplyQueryBarSort,
+} from '@mongodb-js/compass-query-bar';
 import type { CrudToolbarProps } from './crud-toolbar';
 import { CrudToolbar } from './crud-toolbar';
 import type { Document } from 'hadron-document';
@@ -425,15 +430,57 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
   const isEditable = canEdit && editMode;
 
   // Fork extra feature: predefined queries from the highlighter files
-  const applyQueryBarQuery = useApplyQueryBarQuery();
+  const applyQueryBarQuery = useApplyQueryBarQuery('crud');
   const queriesMenu = (
     <>
       <HighlighterQueriesMenu
         namespace={ns}
-        onApply={(parts) => applyQueryBarQuery(parts)}
+        onApply={(parts) => {
+          applyQueryBarQuery(parts);
+          onApplyClicked();
+        }}
       />
       <HighlighterDecorationsToggle />
     </>
+  );
+
+  // Fork extra feature: run the same query on another collection and compare
+  const [compareOpen, setCompareOpen] = useState(false);
+  const listComparableDatabases = useCallback(
+    () => store.listComparableDatabases(),
+    [store]
+  );
+  const fetchComparisonDocuments = useCallback(
+    (compareNs: string) => store.fetchComparisonDocuments(compareNs),
+    [store]
+  );
+  // A comparison pairs documents by their place in the result, so while
+  // comparing the query sorts by _id unless it already has a sort.
+  const applyQueryBarSort = useApplyQueryBarSort('crud');
+  const hasSort = Object.keys(query.sort ?? {}).length > 0;
+  useEffect(() => {
+    if (compareOpen && !hasSort) {
+      applyQueryBarSort({ _id: 1 });
+      onApplyClicked();
+    }
+  }, [compareOpen, hasSort, applyQueryBarSort, onApplyClicked]);
+  const decorateComparedNamespace = useCallback(
+    (namespace: string, children: React.ReactNode) => (
+      <HighlighterFieldDecorations namespace={namespace}>
+        {children}
+      </HighlighterFieldDecorations>
+    ),
+    []
+  );
+  const compareButton = (
+    <Button
+      size="xsmall"
+      data-testid="query-compare-toggle"
+      aria-pressed={compareOpen}
+      onClick={() => setCompareOpen((open) => !open)}
+    >
+      Compare
+    </Button>
   );
 
   const isEmpty = docs.length === 0;
@@ -497,7 +544,22 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
   const renderContent = useCallback(
     (scrollTriggerRef: React.Ref<HTMLDivElement>) => {
       let content = null;
-      if (isFetching) {
+      if (compareOpen) {
+        content = (
+          <HighlighterFieldDecorations namespace={ns}>
+            <QueryCompareView
+              ns={ns}
+              docs={docs}
+              query={query}
+              isFetching={isFetching}
+              listComparableDatabases={listComparableDatabases}
+              fetchComparisonDocuments={fetchComparisonDocuments}
+              onClose={() => setCompareOpen(false)}
+              decorateNamespace={decorateComparedNamespace}
+            />
+          </HighlighterFieldDecorations>
+        );
+      } else if (isFetching) {
         content = (
           <div className={loaderContainerStyles}>
             <CancelLoader
@@ -583,6 +645,11 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
       currentViewInitialScrollTop,
       columnWidths,
       onColumnWidthChange,
+      compareOpen,
+      docs,
+      isFetching,
+      listComparableDatabases,
+      fetchComparisonDocuments,
     ]
   );
 
@@ -639,7 +706,12 @@ const DocumentList: React.FunctionComponent<DocumentListProps> = (props) => {
             readonly={!canEdit}
             editMode={canEdit ? editMode : undefined}
             onToggleEditMode={canEdit ? toggleEditMode : undefined}
-            extraLeftActions={queriesMenu}
+            extraLeftActions={
+              <>
+                {queriesMenu}
+                {compareButton}
+              </>
+            }
             viewSwitchHandler={handleViewChanged}
             isWritable={isWritable}
             instanceDescription={instanceDescription}

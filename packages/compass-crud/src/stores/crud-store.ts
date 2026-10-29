@@ -55,6 +55,8 @@ import {
   openBulkUpdateProgressToast,
   openBulkUpdateSuccessToast,
 } from '../components/bulk-actions-toasts';
+import { listComparableDatabases } from '../components/query-compare/list-databases';
+import { COMPARE_LIMITS } from '../components/query-compare/limits';
 import type { DataService } from '../utils/data-service';
 import type {
   Collection,
@@ -1627,6 +1629,54 @@ class CrudStoreImpl
     this.setState({
       collectionStats: extractCollectionStats(model),
     });
+  }
+
+  /**
+   * Fork extra feature: the databases on this connection that have a collection
+   * with the same name as the current one, for the query comparison view.
+   */
+  listComparableDatabases(): Promise<string[]> {
+    const [currentDatabase, ...collectionParts] = this.state.ns.split('.');
+    return listComparableDatabases(
+      this.dataService,
+      collectionParts.join('.'),
+      currentDatabase
+    );
+  }
+
+  /**
+   * Fork extra feature: runs the last applied query against `ns` (same
+   * connection). Without a sort the result is ordered by _id, so the two sides
+   * of the comparison line up.
+   */
+  fetchComparisonDocuments(ns: string): Promise<HadronDocument[]> {
+    const query = this.queryBar.getLastAppliedQuery('crud');
+    const limit = Math.min(
+      this.state.docsPerPage,
+      query.limit && query.limit > 0 ? query.limit : Infinity,
+      COMPARE_LIMITS.maxDocuments
+    );
+    return fetchDocuments(
+      this.dataService,
+      this.track,
+      this.state.version,
+      this.state.isDataLake,
+      ns,
+      query.filter ?? {},
+      {
+        sort: query.sort ?? { _id: 1 },
+        projection: query.project ?? undefined,
+        skip: query.skip,
+        limit,
+        collation: query.collation as CollationOptions,
+        maxTimeMS: capMaxTimeMSAtPreferenceLimit(
+          this.preferences,
+          query.maxTimeMS
+        ),
+        promoteValues: false,
+        bsonRegExp: true,
+      }
+    );
   }
 
   /**
