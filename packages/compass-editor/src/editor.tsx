@@ -698,12 +698,20 @@ async function waitUntilEditorIsReady(
  */
 async function scheduleDispatch(
   editorView: EditorView,
-  transactions: TransactionSpec | TransactionSpec[],
+  transactions:
+    | TransactionSpec
+    | TransactionSpec[]
+    | ((view: EditorView) => TransactionSpec | TransactionSpec[]),
   signal?: AbortSignal
 ): Promise<boolean> {
   await waitUntilEditorIsReady(editorView, signal);
-  transactions = Array.isArray(transactions) ? transactions : [transactions];
-  editorView.dispatch(...transactions);
+  // A function is evaluated only once the editor is ready, so ranges it builds
+  // from the document match the document that is current at dispatch time.
+  const specs =
+    typeof transactions === 'function'
+      ? transactions(editorView)
+      : transactions;
+  editorView.dispatch(...(Array.isArray(specs) ? specs : [specs]));
   return true;
 }
 
@@ -1212,14 +1220,14 @@ const BaseEditor = React.forwardRef<EditorRef, EditorProps>(function BaseEditor(
 
       void scheduleDispatch(
         editorViewRef.current,
-        {
+        (view) => ({
           changes: {
             from: 0,
             // Replace all the content
-            to: editorViewRef.current.state.doc.length,
+            to: view.state.doc.length,
             insert: text,
           },
-        },
+        }),
         controller.signal
       );
 
