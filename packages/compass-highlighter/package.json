@@ -62,7 +62,7 @@
     "@mongodb-js/compass-workspaces": "^1.6.0",
     "@mongodb-js/workspace-info": "^1.13.1",
     "bson": "^7.3.2",
-    "compass-preferences-model": "^3.6.0",
+    "@mongodb-js/compass-preferences-model": "^3.6.0",
     "hadron-document": "^8.12.3",
     "mongodb-query-parser": "^5.1.3",
     "react": "^18.3.1",

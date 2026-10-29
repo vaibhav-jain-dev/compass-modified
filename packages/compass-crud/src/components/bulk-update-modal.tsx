@@ -2,7 +2,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 import type { UpdatePreview } from 'mongodb-data-service';
 import type { MongoServerError } from 'mongodb';
 import type { Document } from 'bson';
-import { toJSString } from 'mongodb-query-parser';
+import { toJSString } from '@mongodb-js/shell-bson-parser';
 import {
   css,
   cx,
@@ -35,12 +35,11 @@ import {
   useSafeIntegerLinter,
 } from '@mongodb-js/compass-editor';
 
+import { useFavoriteQueryStorageAccess } from '@mongodb-js/my-queries-storage/provider';
+import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
 import type { BSONObject } from '../stores/crud-store';
 import { ChangeView } from './change-view';
 import { ReadonlyFilter } from './readonly-filter';
-
-import { useFavoriteQueryStorageAccess } from '@mongodb-js/my-queries-storage/provider';
-import { useTelemetry } from '@mongodb-js/compass-telemetry/provider';
 
 const modalContentStyles = css({
   width: '100%',

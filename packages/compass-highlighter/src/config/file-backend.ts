@@ -1,7 +1,7 @@
 import { promises as fs, watchFile, unwatchFile } from 'fs';
 import os from 'os';
 import path from 'path';
-import type { PreferencesAccess } from 'compass-preferences-model/provider';
+import type { PreferencesAccess } from '@mongodb-js/compass-preferences-model/provider';
 import type { ConfigBackend, MappingsSource } from './backend';
 
 export const CONFIG_FILE_NAME = 'highlighter.yaml';

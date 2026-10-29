@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { createNoopLogger } from '@mongodb-js/compass-logging/provider';
-import { createSandboxFromDefaultPreferences } from 'compass-preferences-model';
-import type { PreferencesAccess } from 'compass-preferences-model';
+import { createSandboxFromDefaultPreferences } from '@mongodb-js/compass-preferences-model';
+import type { PreferencesAccess } from '@mongodb-js/compass-preferences-model';
 import { LocalAiService } from './local-ai-service';
 
 describe('LocalAiService', function () {

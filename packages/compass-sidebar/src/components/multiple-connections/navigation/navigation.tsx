@@ -11,7 +11,7 @@ import {
   useOpenWorkspace,
   useWorkspacePlugins,
 } from '@mongodb-js/compass-workspaces/provider';
-import { usePreference } from 'compass-preferences-model/provider';
+import { usePreference } from '@mongodb-js/compass-preferences-model/provider';
 import { useHighlighterEnabled } from '@mongodb-js/compass-highlighter';
 import React from 'react';
 

@@ -1,5 +1,6 @@
 import React, { useCallback, useContext, useMemo } from 'react';
-import type QueryBar from './query-bar';
+import { createServiceLocator } from '@mongodb-js/compass-app-registry';
+import { cloneDeep } from 'lodash';
 import { useSelector, useStore } from '../stores/context';
 import type { ChangeFilterEvent } from '../modules/change-filter';
 import {
@@ -9,12 +10,11 @@ import {
   changeField,
 } from '../stores/query-bar-reducer';
 import { mapFormFieldsToQuery } from '../utils/query';
-import { createServiceLocator } from '@mongodb-js/compass-app-registry';
 import type { RootState } from '../stores/query-bar-store';
 import { isQueryEqual } from '../utils';
 import type { BaseQuery } from '../constants/query-properties';
-import { cloneDeep } from 'lodash';
 import { DEFAULT_QUERY_VALUES } from '../constants/query-bar-store';
+import type QueryBar from './query-bar';
 
 function NoOpQueryBarComponent() {
   return <></>;

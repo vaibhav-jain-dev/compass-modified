@@ -6,8 +6,8 @@ import {
   css,
   resetGlobalCSS,
 } from '@mongodb-js/compass-components';
-import type * as CompassWebModule from '../src';
 import { createHashHistory } from 'history';
+import type * as CompassWebModule from '../src';
 // Subpath import on purpose: the main entry would pull the whole plugin
 // (and the driver) into the sandbox bundle, which has no Node polyfills.
 import { HttpConfigBackend } from '@mongodb-js/compass-highlighter/http-backend';

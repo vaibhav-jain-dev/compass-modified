@@ -161,8 +161,8 @@ export const HighlighterConfigSchema = z
     // Prefix for code references, e.g. https://github.com/org/repo/blob/<sha>/
     codeBaseUrl: z.string().optional(),
     display: DisplaySchema.optional(),
-    styles: z.record(StyleSchema).optional(),
-    tags: z.record(TagDefinitionSchema).optional(),
+    styles: z.record(z.string(), StyleSchema).optional(),
+    tags: z.record(z.string(), TagDefinitionSchema).optional(),
     features: z.array(FeatureSchema).default([]),
   })
   .passthrough();

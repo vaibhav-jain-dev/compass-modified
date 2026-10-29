@@ -1,6 +1,6 @@
 import { openToast, closeToast } from '@mongodb-js/compass-components';
 import type { AtlasService } from '@mongodb-js/atlas-service/provider';
-import type { PreferencesAccess } from 'compass-preferences-model/provider';
+import type { PreferencesAccess } from '@mongodb-js/compass-preferences-model/provider';
 import type { Logger } from '@mongodb-js/compass-logging';
 import {
   AtlasAiService,
